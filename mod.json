@@ -9,7 +9,7 @@
 		"url": "https://github.com/SergeyMC9730/attemptholder/issues",
 		"info": "Any bugs with Death Replay should be reported here."
 	},
-	"description": "Shows all of your level deaths while playing it.",
+	"description": "Shows all of your level deaths while playing it",
 	"binary": "dogotrigger.deathreplay",
 	"settings": {
 		"show-deaths": {
