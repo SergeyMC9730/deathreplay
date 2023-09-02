@@ -1,0 +1,47 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "linux-default",
+            "displayName": "Windows Release (Linux)",
+            "description": "Geode (Linux)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "environment": {
+                "TOOLCHAIN_BASE": "/home/mint/geode/toolchain_linux",
+                "SPLAT_DIR": "/home/mint/geode/toolchain_linux/splat",
+                "TOOLCHAIN_REPO": "/home/mint/geode/toolchain_linux/toolchain",
+                "HOST_ARCH": "x86",
+                "MSVC_BASE": "/home/mint/geode/toolchain_linux/splat/crt",
+                "WINSDK_BASE": "/home/mint/geode/toolchain_linux/splat/sdk",
+                "WINSDK_VER": "10.0.22000",
+                "LLVM_VER": "14",
+                "CLANG_VER": "14",
+                "GEODE_SDK": "/home/mint/geode/sdk",
+                "CLI_PATH": "/home/mint/geode/cli"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "GEODE_DISABLE_FMT_CONSTEVAL": "1",
+                "CLI_PATH": "/home/mint/geode/cli"
+            },
+            "toolchainFile": "/home/mint/geode/toolchain_linux/toolchain/clang-cl-msvc.cmake"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "build-linux-default",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "linux-default"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "test-linux-default",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "linux-default"
+        }
+    ]
+}
