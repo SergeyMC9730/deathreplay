@@ -51,8 +51,9 @@ class $modify(PlayerObject) {
 		_progresses["attempts"].push_back(attempt);
 
 		int id = pl->m_level->m_levelID.value();
-
-		std::string filename = "level_" + std::to_string(id) + ".json";
+	
+		std::string path = Mod::get()->getSaveDir().generic_string();
+		std::string filename = path + "/level_" + std::to_string(id) + ".json";
 
 		if (id == 0) {
 			std::string name = pl->m_level->m_levelName;
@@ -60,7 +61,7 @@ class $modify(PlayerObject) {
 			int rev = pl->m_level->m_levelRev;
 			int sid = pl->m_level->m_songID;
 
-			filename = "level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
+			filename = path + "/level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
 		}
 
 		std::ofstream o(filename);
@@ -83,7 +84,7 @@ class $modify(PlayLayer) {
 		DMSettings::showParticles = Mod::get()->getSettingValue<bool>("show-particles");
 		DMSettings::showDeaths = Mod::get()->getSettingValue<bool>("show-deaths");
 
-		printf("settings:\n - play death sound %d\n - show particles %d\n - show deaths %d\n", DMSettings::playDeathEffect, DMSettings::showParticles, DMSettings::showDeaths);
+		// printf("settings:\n - play death sound %d\n - show particles %d\n - show deaths %d\n", DMSettings::playDeathEffect, DMSettings::showParticles, DMSettings::showDeaths);
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
@@ -92,7 +93,8 @@ class $modify(PlayLayer) {
 		
 		int id = level->m_levelID.value();
 
-		std::string filename = "level_" + std::to_string(id) + ".json";
+		std::string path = Mod::get()->getSaveDir().generic_string();
+		std::string filename = path + "/level_" + std::to_string(id) + ".json";
 
 		if (id == 0) {
 			std::string name = level->m_levelName;
@@ -100,7 +102,7 @@ class $modify(PlayLayer) {
 			int rev = level->m_levelRev;
 			int sid = level->m_songID;
 
-			filename = "level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
+			filename = path + "/level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
 		}
 
 		if (std::filesystem::exists(filename)) {
