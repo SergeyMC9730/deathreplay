@@ -84,8 +84,6 @@ class $modify(PlayLayer) {
 		DMSettings::showParticles = Mod::get()->getSettingValue<bool>("show-particles");
 		DMSettings::showDeaths = Mod::get()->getSettingValue<bool>("show-deaths");
 
-		// printf("settings:\n - play death sound %d\n - show particles %d\n - show deaths %d\n", DMSettings::playDeathEffect, DMSettings::showParticles, DMSettings::showDeaths);
-
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
 
