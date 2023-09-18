@@ -21,7 +21,7 @@
                 "CLI_PATH": "/home/mint/geode/cli"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "GEODE_DISABLE_FMT_CONSTEVAL": "1",
                 "CLI_PATH": "/home/mint/geode/cli"
             },

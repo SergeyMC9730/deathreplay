@@ -33,6 +33,10 @@ namespace DMSettings {
 	bool showDeaths = true;
 	bool showParticles = true;
 	bool playDeathEffect = true;
+
+	bool showGhost = false;
+	float ghostFPS = 60.f;
+
 	int maxDeaths = 1024;
 }
 
@@ -74,15 +78,58 @@ class $modify(PlayerObject) {
 	}
 };
 
-class $modify(PlayLayer) {
-	CCLayer *m_deathLayer;
-	std::vector<CCSprite *> m_deaths;
-	std::vector<CCNode *> m_nodes;
+class AdvCCPoint : public cocos2d::CCPoint {
+public:
+	float rotation;
+};
+
+class $modify(XPlayLayer, PlayLayer) {
+	std::vector<CCSprite *> m_deaths = {};
+	std::vector<CCNode *> m_nodes = {};
+	std::vector<AdvCCPoint> m_ghostPosition = {};
+	std::vector<AdvCCPoint> m_currentGhost = {};
+
+	CCLayer *m_deathLayer = nullptr;
+
+	PlayerObject *m_ghost = nullptr;
+
+	int m_ghIndex = 0;
+
+	void addPlayerPosition(float delta) {
+		auto pos = m_player1->getPosition();
+
+		AdvCCPoint point;
+		point.x = pos.x;
+		point.y = pos.y;
+		point.rotation = m_player1->getRotation();
+
+		m_fields->m_ghostPosition.push_back(point);
+	}
+	void addPlayerPositionWait(float delta) {
+		printf("recording!\n");
+		this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
+	}
+
+	void playGhost(float delta) {
+		if (m_fields->m_ghIndex >= m_fields->m_currentGhost.size() || m_isPracticeMode) return;
+
+		auto pos = m_fields->m_currentGhost[m_fields->m_ghIndex];
+
+		m_fields->m_ghost->setPositionX(pos.x);
+		m_fields->m_ghost->setPositionY(pos.y);
+		m_fields->m_ghost->setRotation(pos.rotation);
+
+		// printf("player pos %f %f %f (frame %d)\n", pos.x, pos.y, pos.rotation, m_fields->m_ghIndex + 1);
+
+		m_fields->m_ghIndex++;
+	}
 
 	bool init(GJGameLevel *level) {
 		DMSettings::playDeathEffect = Mod::get()->getSettingValue<bool>("play-death-sound");
 		DMSettings::showParticles = Mod::get()->getSettingValue<bool>("show-particles");
 		DMSettings::showDeaths = Mod::get()->getSettingValue<bool>("show-deaths");
+		DMSettings::showGhost = Mod::get()->getSettingValue<bool>("show-ghost");
+		// DMSettings::ghostFPS = 1.f / CCDirector::sharedDirector()->getDeltaTime();
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
@@ -124,11 +171,40 @@ class $modify(PlayLayer) {
 
 		m_fields->m_deathLayer = CCLayer::create();
 
-		this->sortAllChildren();
+		auto object_layer = this->m_objectLayer;
 
-		auto camera_layer = dynamic_cast<CCNode *>(this->getChildren()->objectAtIndex(3));
+		object_layer->addChild(m_fields->m_deathLayer, 65535);
 
-		camera_layer->addChild(m_fields->m_deathLayer, 65535);
+		auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<CCLayer *>(this));
+
+		po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
+		po->setColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
+
+		CCPoint pos;
+
+		pos.x = m_player1->getPositionX();
+		pos.y = m_player1->getPositionY();
+
+		po->setPosition(pos);
+		po->setOpacity(128);
+
+		if (!DMSettings::showGhost) {
+			po->setOpacity(0);
+		}
+
+		m_fields->m_ghost = po;
+
+		m_batchNodePlayer->addChild(po);
+
+		// int m_currentAttempt;
+
+		if (m_currentAttempt == 1) {
+			this->schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 1.f, false, 1.f);
+		} else {
+			this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
+		}
+
+		this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DMSettings::ghostFPS);
 
 		return true;
 	}
@@ -170,6 +246,10 @@ class $modify(PlayLayer) {
 
 				spr->setOpacity(0);
 				spr->runAction(CCFadeIn::create(0.2f));
+				
+				if (x == m_fields->m_ghost->getPositionX() && y == m_fields->m_ghost->getPositionY()) {
+					m_fields->m_ghost->runAction(CCFadeOut::create(0.2f));
+				}
 
 				nd->addChild(spr);
 
@@ -216,6 +296,22 @@ class $modify(PlayLayer) {
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
+
+		m_fields->m_currentGhost = m_fields->m_ghostPosition;
+		m_fields->m_ghostPosition.clear();
+		m_fields->m_ghIndex = 0;
+
+		if (m_fields->m_ghost != nullptr) {
+			CCPoint pos;
+
+			pos.x = m_player1->getPositionX();
+			pos.y = m_player1->getPositionY();
+
+			m_fields->m_ghost->setPosition(pos);
+			m_fields->m_ghost->setRotation(0.f);
+
+			m_fields->m_ghost->setOpacity(128);
+		}
 
 		PlayLayer::resetLevel();
 	}
