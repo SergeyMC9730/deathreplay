@@ -33,6 +33,9 @@ namespace DMSettings {
 	bool showDeaths = true;
 	bool showParticles = true;
 	bool playDeathEffect = true;
+	
+	bool recordPractice = false;
+	bool currentlyInPractice = false;
 
 	bool showGhost = false;
 	float ghostFPS = 60.f;
@@ -42,6 +45,8 @@ namespace DMSettings {
 
 class $modify(PlayerObject) {
 	void playDeathEffect() {
+		if (DMSettings::currentlyInPractice && !DMSettings::recordPractice) return PlayerObject::playDeathEffect();
+		
 		nlohmann::json attempt = nlohmann::json::array();
 
 		auto pl = PlayLayer::get();
@@ -78,61 +83,113 @@ class $modify(PlayerObject) {
 	}
 };
 
-class AdvCCPoint : public cocos2d::CCPoint {
+class AdvancedCCPoint : public cocos2d::CCPoint {
 public:
 	float rotation;
+};
+
+// class GhostPlayer {
+// 	std::vector<AdvancedCCPoint> _recordedPosition;
+// };
+
+class GhostPosition {
+public:
+	// AdvancedCCPoint _player1;
+	// AdvancedCCPoint _player2;
+	std::vector<AdvancedCCPoint> _players;
 };
 
 class $modify(XPlayLayer, PlayLayer) {
 	std::vector<CCSprite *> m_deaths = {};
 	std::vector<CCNode *> m_nodes = {};
-	std::vector<AdvCCPoint> m_ghostPosition = {};
-	std::vector<AdvCCPoint> m_currentGhost = {};
+	std::vector<GhostPosition> m_ghostPosition = {};
+	std::vector<GhostPosition> m_currentGhost = {};
+	bool m_processGhost = false;
 
 	CCLayer *m_deathLayer = nullptr;
 
-	PlayerObject *m_ghost = nullptr;
+	std::vector<PlayerObject *> m_ghosts = {};
 
 	int m_ghIndex = 0;
 
+	std::vector<PlayerObject *> getAttachablePlayers() {
+		return { m_player1, m_player2 };
+	}
+
 	void addPlayerPosition(float delta) {
-		auto pos = m_player1->getPosition();
+		std::vector<PlayerObject *> players = getAttachablePlayers();
 
-		AdvCCPoint point;
-		point.x = pos.x;
-		point.y = pos.y;
-		point.rotation = m_player1->getRotation();
+		GhostPosition pos;
 
-		m_fields->m_ghostPosition.push_back(point);
+		for (auto pl : players) {
+			auto player_pos = pl->getPosition();
+
+			AdvancedCCPoint point;
+
+			point.x = player_pos.x;
+			point.y = player_pos.y;
+
+			point.rotation = pl->getRotation();
+
+			pos._players.push_back(point);
+		}
+
+		m_fields->m_ghostPosition.push_back(pos);
 	}
 	void addPlayerPositionWait(float delta) {
-		printf("recording!\n");
-		this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
+		if (DMSettings::showGhost) {
+			//printf("recording!\n");
+			// this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
+			m_fields->m_processGhost = true;
+		}
 	}
 
 	void playGhost(float delta) {
 		if (m_fields->m_ghIndex >= m_fields->m_currentGhost.size() || m_isPracticeMode) return;
 
-		auto pos = m_fields->m_currentGhost[m_fields->m_ghIndex];
+		// std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
 
-		m_fields->m_ghost->setPositionX(pos.x);
-		m_fields->m_ghost->setPositionY(pos.y);
-		m_fields->m_ghost->setRotation(pos.rotation);
+		auto frame = m_fields->m_currentGhost[m_fields->m_ghIndex];
 
-		// printf("player pos %f %f %f (frame %d)\n", pos.x, pos.y, pos.rotation, m_fields->m_ghIndex + 1);
+		size_t i = 0;
+		while (i < frame._players.size() && i < m_fields->m_ghosts.size()) {
+			//printf("ghost playback %d at frame %d\n", i, m_fields->m_ghIndex);
+			auto player_pos = frame._players[i];
+			// auto player = attachedPlayers[i];
+			auto ghost = m_fields->m_ghosts[i];
+
+			CCPoint pos;
+
+			pos.x = player_pos.x;
+			pos.y = player_pos.y;
+
+			ghost->setPosition(pos);
+			ghost->setRotation(player_pos.rotation);
+
+			i++;
+		}
 
 		m_fields->m_ghIndex++;
 	}
 
 	bool init(GJGameLevel *level) {
+		bool res = PlayLayer::init(level);
+		if (!res) return false;
+
 		DMSettings::playDeathEffect = Mod::get()->getSettingValue<bool>("play-death-sound");
 		DMSettings::showParticles = Mod::get()->getSettingValue<bool>("show-particles");
 		DMSettings::showDeaths = Mod::get()->getSettingValue<bool>("show-deaths");
 		DMSettings::showGhost = Mod::get()->getSettingValue<bool>("show-ghost");
-		// DMSettings::ghostFPS = 1.f / CCDirector::sharedDirector()->getDeltaTime();
+		DMSettings::recordPractice = Mod::get()->getSettingValue<bool>("record-practice");
+		DMSettings::ghostFPS = 1.f / CCDirector::sharedDirector()->getAnimationInterval();
+
+		// printf("anim interval: %f\n", CCDirector::sharedDirector()->getAnimationInterval());
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
+		m_fields->m_ghosts.clear();
+		m_fields->m_ghostPosition.clear();
+		m_fields->m_currentGhost.clear();
 
 		m_fields->m_deathLayer = nullptr;
 		
@@ -166,8 +223,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			i++;
 		}
 
-		bool res = PlayLayer::init(level);
-		if (!res) return false;
+		//printf("init playlayer\n");
 
 		m_fields->m_deathLayer = CCLayer::create();
 
@@ -175,41 +231,68 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		object_layer->addChild(m_fields->m_deathLayer, 65535);
 
-		auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<CCLayer *>(this));
+		//printf("getting attached players\n");
 
-		po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
-		po->setColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
+		auto pllist = getAttachablePlayers();
 
-		CCPoint pos;
+		//printf("creating ghost variants\n");
 
-		pos.x = m_player1->getPositionX();
-		pos.y = m_player1->getPositionY();
+		i = 0;
+		while (i < pllist.size()) {
+			if (pllist[i] == nullptr) continue;
 
-		po->setPosition(pos);
-		po->setOpacity(128);
+			auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<CCLayer *>(this));
 
-		if (!DMSettings::showGhost) {
-			po->setOpacity(0);
+			po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
+			po->setColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
+		
+			CCPoint pos;
+
+			pos.x = pllist[i]->getPositionX();
+			pos.y = pllist[i]->getPositionY();
+
+			po->setPosition(pos);
+			po->setOpacity(128);
+
+			if (!DMSettings::showGhost || DMSettings::currentlyInPractice) {
+				po->setOpacity(0);
+			}
+
+			m_batchNodePlayer->addChild(po);
+
+			m_fields->m_ghosts.push_back(po);
+
+			i++;
 		}
-
-		m_fields->m_ghost = po;
-
-		m_batchNodePlayer->addChild(po);
 
 		// int m_currentAttempt;
 
 		if (m_currentAttempt == 1) {
 			this->schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 1.f, false, 1.f);
 		} else {
-			this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
+			if (DMSettings::showGhost) {
+				m_fields->m_processGhost = true;
+			}
 		}
 
-		this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DMSettings::ghostFPS);
+		// this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DMSettings::ghostFPS);
 
 		return true;
 	}
 	void update(float delta) {
+		DMSettings::currentlyInPractice = m_isPracticeMode;
+
+		if (m_fields->m_processGhost) {
+			playGhost(delta);
+		}
+
 		PlayLayer::update(delta);
+
+		DMSettings::currentlyInPractice = m_isPracticeMode;
+
+		if (m_fields->m_processGhost) {
+			addPlayerPosition(delta);
+		}
 
 		int i = 0;
 
@@ -217,9 +300,19 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		if (!showDeaths) return;
 
+		for (auto ghost : m_fields->m_ghosts) {
+			if (ghost == nullptr) continue;
+
+			ghost->setOpacity(128);
+
+			if (!DMSettings::showGhost || DMSettings::currentlyInPractice) {
+				ghost->setOpacity(0);
+			}
+		}
+
 		if (m_fields->m_nodes.size() > 1024) {
 			for (auto node : m_fields->m_nodes) {
-				node->removeMeAndCleanup();
+				if (node != nullptr) node->removeMeAndCleanup();
 			}
 
 			m_fields->m_deaths.clear();
@@ -247,9 +340,13 @@ class $modify(XPlayLayer, PlayLayer) {
 				spr->setOpacity(0);
 				spr->runAction(CCFadeIn::create(0.2f));
 				
-				if (x == m_fields->m_ghost->getPositionX() && y == m_fields->m_ghost->getPositionY()) {
-					m_fields->m_ghost->runAction(CCFadeOut::create(0.2f));
-				}
+				// for (auto ghost : m_fields->m_ghosts) {
+					
+				// }
+
+				// // if (x == m_fields->m_ghost->getPositionX() && y == m_fields->m_ghost->getPositionY()) {
+				// // 	m_fields->m_ghost->runAction(CCFadeOut::create(0.2f));
+				// // }
 
 				nd->addChild(spr);
 
@@ -282,37 +379,50 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	void resetLevel() {
-		int i = 0;
+		//printf("resetting level\n");
+		PlayLayer::resetLevel(); // CRASH
 
+		size_t i = 0;
+
+		//printf("process attempts\n");
 		while (i < _progresses["attempts"].size()) {
 			_progresses["attempts"][i][2] = 0;
+
+			//printf("processed attempt %d\n", i);
 
 			i++;
 		}
 
+		//printf("process nodes\n");
 		for (auto node : m_fields->m_nodes) {
+			//printf("removing node %X\n", node);
 			node->removeMeAndCleanup();
 		}
 
+		//printf("process array cleaning\n");
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
 
+		//printf("process ghost traits\n");
 		m_fields->m_currentGhost = m_fields->m_ghostPosition;
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
 
-		if (m_fields->m_ghost != nullptr) {
-			CCPoint pos;
+		//printf("getting attached players\n");
+		std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
 
-			pos.x = m_player1->getPositionX();
-			pos.y = m_player1->getPositionY();
+		i = 0;
+		while (i < attachedPlayers.size() && i < m_fields->m_ghosts.size()) {
+			//printf("processing ghost %d\n", i);
+			auto ghost = m_fields->m_ghosts[i];
+			auto player = attachedPlayers[i];
 
-			m_fields->m_ghost->setPosition(pos);
-			m_fields->m_ghost->setRotation(0.f);
+			if (ghost != nullptr && player != nullptr) {
+				ghost->setPosition(player->getPosition());
+				ghost->setRotation(player->getRotation());
+			}
 
-			m_fields->m_ghost->setOpacity(128);
+			i++;
 		}
-
-		PlayLayer::resetLevel();
 	}
 };

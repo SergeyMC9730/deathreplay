@@ -1,6 +1,6 @@
 {
-	"geode": "v1.2.0",
-	"version": "v1.0.2",
+	"geode": "v1.3.5",
+	"version": "v1.1.1",
 	"id": "org.dogotrigger.deathreplay",
 	"name": "Death Replay",
 	"developer": "dogotrigger",
@@ -29,6 +29,12 @@
 			"description": "Shows death particles.",
 			"type": "bool",
 			"default": true
+		},
+		"record-practice": {
+			"name": "Record in Practice Mode",
+			"description": "Record all death positions in Practice Mode.",
+			"type": "bool",
+			"default": false
 		},
 		"show-ghost": {
 			"name": "Show Ghost",
