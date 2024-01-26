@@ -22,7 +22,7 @@
 
 #include <Geode/binding/CCCircleWave.hpp>
 #include <Geode/cocos/particle_nodes/CCParticleSystemQuad.h>
-#include <Geode/binding/GameSoundManager.hpp>
+#include <Geode/binding/FModAudioEngine.hpp>
 
 using namespace geode::prelude;
 // using namespace geode::modifier;
@@ -41,6 +41,10 @@ namespace DMSettings {
 	float ghostFPS = 60.f;
 
 	int maxDeaths = 1024;
+
+	double playTime = 0.f;
+	int currentAttempt = 1;
+	bool inPlatformer = false;
 }
 
 class $modify(PlayerObject) {
@@ -51,11 +55,17 @@ class $modify(PlayerObject) {
 
 		auto pl = PlayLayer::get();
 
-		float percentage = getPositionX() / pl->m_realLevelLength * 100.f;
+		// float percentage = getPositionX() / pl->m_realLevelLength * 100.f;
+
+		double extra = (DMSettings::currentAttempt == 1);
 
 		attempt.push_back((float)getPositionX());
 		attempt.push_back((float)getPositionY());
 		attempt.push_back((int)1);
+
+		if (!DMSettings::inPlatformer) attempt.push_back((double)DMSettings::playTime + extra);
+
+		printf("added death notif with: %f %f %d %f\n", getPositionX(), getPositionY(), 1, (float)DMSettings::playTime);
 
 		_progresses["attempts"].push_back(attempt);
 
@@ -105,15 +115,22 @@ class $modify(XPlayLayer, PlayLayer) {
 	std::vector<GhostPosition> m_ghostPosition = {};
 	std::vector<GhostPosition> m_currentGhost = {};
 	bool m_processGhost = false;
+	bool m_processPlaytime = false;
 
 	CCLayer *m_deathLayer = nullptr;
 
 	std::vector<PlayerObject *> m_ghosts = {};
 
 	int m_ghIndex = 0;
+	int m_XcurrentAttempt = 1;
 
 	std::vector<PlayerObject *> getAttachablePlayers() {
 		return { m_player1, m_player2 };
+	}
+
+	void updatePlaytime(float delta) {
+		DMSettings::playTime += (double)delta;
+		DMSettings::currentAttempt = m_fields->m_XcurrentAttempt;
 	}
 
 	void addPlayerPosition(float delta) {
@@ -138,10 +155,9 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 	void addPlayerPositionWait(float delta) {
 		if (DMSettings::showGhost) {
-			//printf("recording!\n");
-			// this->schedule(schedule_selector(XPlayLayer::addPlayerPosition), 1.f / DMSettings::ghostFPS);
 			m_fields->m_processGhost = true;
 		}
+		m_fields->m_processPlaytime = true;
 	}
 
 	void playGhost(float delta) {
@@ -172,8 +188,10 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_ghIndex++;
 	}
 
-	bool init(GJGameLevel *level) {
-		bool res = PlayLayer::init(level);
+	bool init(GJGameLevel *level, bool a, bool b) {
+        if (level && level->m_levelLength == 5) DMSettings::inPlatformer = true; 
+
+		bool res = PlayLayer::init(level, a, b);
 		if (!res) return false;
 
 		DMSettings::playDeathEffect = Mod::get()->getSettingValue<bool>("play-death-sound");
@@ -182,6 +200,10 @@ class $modify(XPlayLayer, PlayLayer) {
 		DMSettings::showGhost = Mod::get()->getSettingValue<bool>("show-ghost");
 		DMSettings::recordPractice = Mod::get()->getSettingValue<bool>("record-practice");
 		DMSettings::ghostFPS = 1.f / CCDirector::sharedDirector()->getAnimationInterval();
+		DMSettings::playTime = 0;
+
+		// TEMP
+		DMSettings::showGhost = false;
 
 		// printf("anim interval: %f\n", CCDirector::sharedDirector()->getAnimationInterval());
 
@@ -241,7 +263,8 @@ class $modify(XPlayLayer, PlayLayer) {
 		while (i < pllist.size()) {
 			if (pllist[i] == nullptr) continue;
 
-			auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<CCLayer *>(this));
+			// int p0, int p1, GJBaseGameLayer* p2, cocos2d::CCLayer* p3, bool p4
+			auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<GJBaseGameLayer *>(this), dynamic_cast<CCLayer *>(this), true);
 
 			po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
 			po->setColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
@@ -256,9 +279,10 @@ class $modify(XPlayLayer, PlayLayer) {
 
 			if (!DMSettings::showGhost || DMSettings::currentlyInPractice) {
 				po->setOpacity(0);
-			}
+			}	
 
-			m_batchNodePlayer->addChild(po);
+			// idk
+			// m_batchNodePlayer->addChild(po);
 
 			m_fields->m_ghosts.push_back(po);
 
@@ -267,26 +291,26 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		// int m_currentAttempt;
 
-		if (m_currentAttempt == 1) {
+		if (m_fields->m_XcurrentAttempt == 1) {
 			this->schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 1.f, false, 1.f);
 		} else {
-			if (DMSettings::showGhost) {
-				m_fields->m_processGhost = true;
-			}
+			addPlayerPositionWait(0.f);
 		}
 
 		// this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DMSettings::ghostFPS);
 
 		return true;
 	}
-	void update(float delta) {
+	void updateVisibility(float delta) {
+		updatePlaytime(delta);
+
 		DMSettings::currentlyInPractice = m_isPracticeMode;
 
 		if (m_fields->m_processGhost) {
 			playGhost(delta);
 		}
 
-		PlayLayer::update(delta);
+		PlayLayer::updateVisibility(delta);
 
 		DMSettings::currentlyInPractice = m_isPracticeMode;
 
@@ -298,17 +322,21 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		bool showDeaths = !m_isPracticeMode && DMSettings::showDeaths;
 
-		if (!showDeaths) return;
+		// printf("can show deaths: %d\n", showDeaths);
 
-		for (auto ghost : m_fields->m_ghosts) {
-			if (ghost == nullptr) continue;
+		if (DMSettings::showGhost) {
+			for (auto ghost : m_fields->m_ghosts) {
+				if (ghost == nullptr) continue;
 
-			ghost->setOpacity(128);
-
-			if (!DMSettings::showGhost || DMSettings::currentlyInPractice) {
-				ghost->setOpacity(0);
+				if (!DMSettings::showGhost || DMSettings::currentlyInPractice) {
+					ghost->setOpacity(0);
+				} else {
+					ghost->setOpacity(128);
+				}
 			}
 		}
+
+		if (!showDeaths) return;
 
 		if (m_fields->m_nodes.size() > 1024) {
 			for (auto node : m_fields->m_nodes) {
@@ -322,11 +350,24 @@ class $modify(XPlayLayer, PlayLayer) {
 		while (i < _progresses["attempts"].size()) {
 			auto obj = _progresses["attempts"][i];
 	
-			bool created = obj[2].get<int>();
 			float x = obj[0].get<float>();
 			float y = obj[1].get<float>();
+			bool created = obj[2].get<int>();
+			double playTime = -1; // obj[3]
+			bool playTimeIgnored = DMSettings::inPlatformer;
 
-			if (!created && (x <= m_player1->getPositionX())) {
+			// v1.2.0 new parameters
+			if (obj.size() >= 4) {
+				playTime = obj[3].get<double>();
+			}
+
+			if (!created && 
+				(
+					(x <= m_player1->getPositionX())
+					||
+					((DMSettings::playTime >= playTime) && !playTimeIgnored)
+				)
+			) {
 				_progresses["attempts"][i][2] = 1;
 
 				CCNode *nd = CCNode::create();
@@ -336,6 +377,8 @@ class $modify(XPlayLayer, PlayLayer) {
 				spr->setScale(1.3f);
 				nd->setPositionX(x);
 				nd->setPositionY(y);
+
+				printf("creating death object at %f %f (time=%f)\n", x, y, (float)playTime);
 
 				spr->setOpacity(0);
 				spr->runAction(CCFadeIn::create(0.2f));
@@ -351,13 +394,13 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->addChild(spr);
 
 				if(DMSettings::showParticles) {
-					CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
-					// wave->m_opacityMultiplier = 0.5f;
-					wave->m_color = m_player1->m_playerColor1;
+					// CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
+					// // wave->m_opacityMultiplier = 0.5f;
+					// wave->m_color = m_player1->getSecondColor();
 
-					nd->addChild(wave);
+					// nd->addChild(wave);
 
-					auto particle = CCParticleSystemQuad::create("explodeEffect.plist");
+					auto particle = CCParticleSystemQuad::create("explodeEffect.plist", false);
 					particle->setPositionX(0.f);
 					particle->setPositionY(0.f);
 
@@ -365,7 +408,10 @@ class $modify(XPlayLayer, PlayLayer) {
 				}
 
 				if(DMSettings::playDeathEffect) {
-					GameSoundManager::get()->playEffect("explode_11.ogg", 0.5f, 0.5f, 0.5f);
+					// GameSoundManager::get()->playEffect("explode_11.ogg", 0.5f, 0.5f, 0.5f);
+					FMODAudioEngine *engine = FMODAudioEngine::sharedEngine();
+					engine->stopAllEffects();
+					engine->playEffect("explode_11.ogg", 1.f, 0.5f, 0.5f);
 				}
 
 				m_fields->m_deathLayer->addChild(nd);
@@ -379,8 +425,12 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	void resetLevel() {
-		//printf("resetting level\n");
+		printf("resetting level\n");
+		DMSettings::playTime = 0;
+
 		PlayLayer::resetLevel(); // CRASH
+
+		m_fields->m_XcurrentAttempt++;
 
 		size_t i = 0;
 
@@ -402,6 +452,8 @@ class $modify(XPlayLayer, PlayLayer) {
 		//printf("process array cleaning\n");
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
+
+		if (!DMSettings::showGhost) return;
 
 		//printf("process ghost traits\n");
 		m_fields->m_currentGhost = m_fields->m_ghostPosition;
