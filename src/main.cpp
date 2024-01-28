@@ -9,6 +9,8 @@
  */
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/LevelInfoLayer.hpp>
+#include <Geode/modify/EditLevelLayer.hpp>
 
 #include <Geode/binding/FLAlertLayer.hpp>
 
@@ -29,6 +31,40 @@ using namespace geode::prelude;
 
 nlohmann::json _progresses;
 
+std::string generateFilename(GJGameLevel *level) {
+	int id = level->m_levelID.value();
+
+	std::string path = Mod::get()->getSaveDir().generic_string();
+	std::string filename = path + "/level_" + std::to_string(id) + ".json";
+
+	if (id == 0) {
+		std::string name = level->m_levelName;
+		int chk = level->m_chk;
+		int rev = level->m_levelRev;
+		int sid = level->m_songID;
+
+		filename = path + "/level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
+	}
+
+	return filename;
+}
+
+class DRDelegate : public FLAlertLayerProtocol {
+public:
+	GJGameLevel *lvl = nullptr;
+
+	void FLAlert_Clicked(FLAlertLayer *l, bool idk) override {
+		if (idk != 0) return;
+
+		auto filepath = generateFilename(this->lvl);
+
+		std::filesystem::remove(filepath);
+
+		FLAlertLayer *al = FLAlertLayer::create("Success!", "Death Replay file has been <cr>removed</c> for this <cy>level</c>.", "OK");
+		al->show(); 
+	}
+};
+
 namespace DMSettings {
 	bool showDeaths = true;
 	bool showParticles = true;
@@ -45,9 +81,83 @@ namespace DMSettings {
 	double playTime = 0.f;
 	int currentAttempt = 1;
 	bool inPlatformer = false;
+
+	bool isOldLevel = false;
+
+	DRDelegate delegate;
+	GJGameLevel *levelInstance;
 }
 
+class $modify(XLevelInfoLayer, LevelInfoLayer) {
+	void onDeathReplay(CCObject *target) {
+		DMSettings::delegate.lvl = DMSettings::levelInstance;
+
+		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "Yes", "No");
+		l->show(); 
+	}
+
+	bool init(GJGameLevel *lvl, bool idk) {
+		if (!LevelInfoLayer::init(lvl, idk)) return false;
+
+		DMSettings::levelInstance = lvl;
+
+		CCSprite *btn_spr = CCSprite::createWithSpriteFrameName("backArrowPlain_01_001.png");
+		btn_spr->setColor(ccRED);
+		btn_spr->setFlipX(true);
+
+		CCMenuItemSpriteExtra *spr_men = CCMenuItemSpriteExtra::create(btn_spr, this, menu_selector(XLevelInfoLayer::onDeathReplay));
+
+		CCMenu *menu = CCMenu::create();
+
+		menu->addChild(spr_men);
+
+		CCDirector *dir = CCDirector::sharedDirector();
+		auto sz = dir->getWinSize();
+
+		menu->setPosition(65, sz.height - btn_spr->getContentSize().height + 8);
+
+		addChild(menu);
+
+		return true;
+	}
+};
+
+class $modify(XEditLevelLayer, EditLevelLayer) {
+	void onDeathReplay(CCObject *target) {
+		DMSettings::delegate.lvl = DMSettings::levelInstance;
+
+		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "Yes", "No");
+		l->show(); 
+	}
+	
+	bool init(GJGameLevel* p0) {
+		if (!EditLevelLayer::init(p0)) return false;
+
+		DMSettings::levelInstance = p0;
+
+		CCSprite *btn_spr = CCSprite::createWithSpriteFrameName("backArrowPlain_01_001.png");
+		btn_spr->setColor(ccRED);
+		btn_spr->setFlipX(true);
+
+		CCMenuItemSpriteExtra *spr_men = CCMenuItemSpriteExtra::create(btn_spr, this, menu_selector(XEditLevelLayer::onDeathReplay));
+
+		CCMenu *menu = CCMenu::create();
+
+		menu->addChild(spr_men);
+
+		CCDirector *dir = CCDirector::sharedDirector();
+		auto sz = dir->getWinSize();
+
+		menu->setPosition(65, sz.height - btn_spr->getContentSize().height + 8);
+
+		addChild(menu);
+
+		return true;
+	}
+};
+
 class $modify(PlayerObject) {
+	
 	void playDeathEffect() {
 		if (DMSettings::currentlyInPractice && !DMSettings::recordPractice) return PlayerObject::playDeathEffect();
 		
@@ -58,6 +168,7 @@ class $modify(PlayerObject) {
 		// float percentage = getPositionX() / pl->m_realLevelLength * 100.f;
 
 		double extra = (DMSettings::currentAttempt == 1);
+		extra = 0;
 
 		attempt.push_back((float)getPositionX());
 		attempt.push_back((float)getPositionY());
@@ -65,23 +176,13 @@ class $modify(PlayerObject) {
 
 		if (!DMSettings::inPlatformer) attempt.push_back((double)DMSettings::playTime + extra);
 
-		printf("added death notif with: %f %f %d %f\n", getPositionX(), getPositionY(), 1, (float)DMSettings::playTime);
+		//printf("added death notif with: %f %f %d %f\n", getPositionX(), getPositionY(), 1, (float)DMSettings::playTime);
 
 		_progresses["attempts"].push_back(attempt);
 
 		int id = pl->m_level->m_levelID.value();
-	
-		std::string path = Mod::get()->getSaveDir().generic_string();
-		std::string filename = path + "/level_" + std::to_string(id) + ".json";
 
-		if (id == 0) {
-			std::string name = pl->m_level->m_levelName;
-			int chk = pl->m_level->m_chk;
-			int rev = pl->m_level->m_levelRev;
-			int sid = pl->m_level->m_songID;
-
-			filename = path + "/level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
-		}
+		std::string filename = generateFilename(pl->m_level);
 
 		std::ofstream o(filename);
 
@@ -112,6 +213,7 @@ public:
 class $modify(XPlayLayer, PlayLayer) {
 	std::vector<CCSprite *> m_deaths = {};
 	std::vector<CCNode *> m_nodes = {};
+	std::vector<cocos2d::CCParticleSystemQuad *> m_particles;
 	std::vector<GhostPosition> m_ghostPosition = {};
 	std::vector<GhostPosition> m_currentGhost = {};
 	bool m_processGhost = false;
@@ -123,6 +225,11 @@ class $modify(XPlayLayer, PlayLayer) {
 
 	int m_ghIndex = 0;
 	int m_XcurrentAttempt = 1;
+
+	float m_cameraDelta = 0.f;
+	float m_cameraPrev = 0.f;
+	float m_cameraCur = 0.f;
+	CCNode *m_camera1 = nullptr;
 
 	std::vector<PlayerObject *> getAttachablePlayers() {
 		return { m_player1, m_player2 };
@@ -158,6 +265,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			m_fields->m_processGhost = true;
 		}
 		m_fields->m_processPlaytime = true;
+		DMSettings::playTime = 1;
 	}
 
 	void playGhost(float delta) {
@@ -169,7 +277,7 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		size_t i = 0;
 		while (i < frame._players.size() && i < m_fields->m_ghosts.size()) {
-			//printf("ghost playback %d at frame %d\n", i, m_fields->m_ghIndex);
+			////printf("ghost playback %d at frame %d\n", i, m_fields->m_ghIndex);
 			auto player_pos = frame._players[i];
 			// auto player = attachedPlayers[i];
 			auto ghost = m_fields->m_ghosts[i];
@@ -189,10 +297,7 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	bool init(GJGameLevel *level, bool a, bool b) {
-        if (level && level->m_levelLength == 5) DMSettings::inPlatformer = true; 
-
-		bool res = PlayLayer::init(level, a, b);
-		if (!res) return false;
+        if (level && level->m_levelLength == 5) DMSettings::inPlatformer = true;
 
 		DMSettings::playDeathEffect = Mod::get()->getSettingValue<bool>("play-death-sound");
 		DMSettings::showParticles = Mod::get()->getSettingValue<bool>("show-particles");
@@ -201,19 +306,33 @@ class $modify(XPlayLayer, PlayLayer) {
 		DMSettings::recordPractice = Mod::get()->getSettingValue<bool>("record-practice");
 		DMSettings::ghostFPS = 1.f / CCDirector::sharedDirector()->getAnimationInterval();
 		DMSettings::playTime = 0;
-
+		DMSettings::currentAttempt = 1;
 		// TEMP
 		DMSettings::showGhost = false;
 
-		// printf("anim interval: %f\n", CCDirector::sharedDirector()->getAnimationInterval());
+		if (level->m_gameVersion <= 21) {
+			DMSettings::isOldLevel = true;
+		}  else {
+			DMSettings::isOldLevel = false;
+		}
+
+		//printf("DMSettings::isOldLevel=%d\n", DMSettings::isOldLevel);
+
+		m_fields->m_deathLayer = CCLayer::create();
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
 		m_fields->m_ghosts.clear();
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_currentGhost.clear();
+		m_fields->m_particles.clear();
 
-		m_fields->m_deathLayer = nullptr;
+		bool res = PlayLayer::init(level, a, b);
+		if (!res) return false;
+
+		m_fields->m_camera1 = m_player1;
+
+		// //printf("anim interval: %f\n", CCDirector::sharedDirector()->getAnimationInterval());
 		
 		int id = level->m_levelID.value();
 
@@ -245,19 +364,17 @@ class $modify(XPlayLayer, PlayLayer) {
 			i++;
 		}
 
-		//printf("init playlayer\n");
-
-		m_fields->m_deathLayer = CCLayer::create();
+		////printf("init playlayer\n");
 
 		auto object_layer = this->m_objectLayer;
 
 		object_layer->addChild(m_fields->m_deathLayer, 65535);
 
-		//printf("getting attached players\n");
+		////printf("getting attached players\n");
 
 		auto pllist = getAttachablePlayers();
 
-		//printf("creating ghost variants\n");
+		////printf("creating ghost variants\n");
 
 		i = 0;
 		while (i < pllist.size()) {
@@ -295,6 +412,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			this->schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 1.f, false, 1.f);
 		} else {
 			addPlayerPositionWait(0.f);
+			DMSettings::playTime = 0;
 		}
 
 		// this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DMSettings::ghostFPS);
@@ -304,6 +422,11 @@ class $modify(XPlayLayer, PlayLayer) {
 	void updateVisibility(float delta) {
 		updatePlaytime(delta);
 
+		// for (auto p : m_fields->m_particles) {
+		// 	p->setPositionX(p->getPositionX() + (m_fields->m_cameraDelta * 10.f));
+		// 	// //printf("particle x is set to %f\n", p->getPositionX());
+		// }
+
 		DMSettings::currentlyInPractice = m_isPracticeMode;
 
 		if (m_fields->m_processGhost) {
@@ -311,6 +434,12 @@ class $modify(XPlayLayer, PlayLayer) {
 		}
 
 		PlayLayer::updateVisibility(delta);
+
+		if (m_fields->m_processPlaytime && !DMSettings::inPlatformer) {
+			m_fields->m_cameraPrev = m_fields->m_cameraCur;
+			m_fields->m_cameraCur = m_fields->m_camera1->getPositionX();
+			m_fields->m_cameraDelta = m_fields->m_cameraCur - m_fields->m_cameraPrev;
+		}
 
 		DMSettings::currentlyInPractice = m_isPracticeMode;
 
@@ -322,7 +451,7 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		bool showDeaths = !m_isPracticeMode && DMSettings::showDeaths;
 
-		// printf("can show deaths: %d\n", showDeaths);
+		// //printf("can show deaths: %d\n", showDeaths);
 
 		if (DMSettings::showGhost) {
 			for (auto ghost : m_fields->m_ghosts) {
@@ -360,6 +489,8 @@ class $modify(XPlayLayer, PlayLayer) {
 			if (obj.size() >= 4) {
 				playTime = obj[3].get<double>();
 			}
+			if (playTime == -1) playTimeIgnored = true;
+			if (DMSettings::isOldLevel) playTimeIgnored = true;
 
 			if (!created && 
 				(
@@ -378,7 +509,7 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->setPositionX(x);
 				nd->setPositionY(y);
 
-				printf("creating death object at %f %f (time=%f)\n", x, y, (float)playTime);
+				//printf("creating death object at %f %f (time=%f)\n", x, y, (float)playTime);
 
 				spr->setOpacity(0);
 				spr->runAction(CCFadeIn::create(0.2f));
@@ -404,6 +535,8 @@ class $modify(XPlayLayer, PlayLayer) {
 					particle->setPositionX(0.f);
 					particle->setPositionY(0.f);
 
+					m_fields->m_particles.push_back(particle);
+
 					nd->addChild(particle);
 				}
 
@@ -425,7 +558,7 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	void resetLevel() {
-		printf("resetting level\n");
+		//printf("resetting level\n");
 		DMSettings::playTime = 0;
 
 		PlayLayer::resetLevel(); // CRASH
@@ -434,38 +567,39 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		size_t i = 0;
 
-		//printf("process attempts\n");
+		////printf("process attempts\n");
 		while (i < _progresses["attempts"].size()) {
 			_progresses["attempts"][i][2] = 0;
 
-			//printf("processed attempt %d\n", i);
+			////printf("processed attempt %d\n", i);
 
 			i++;
 		}
 
-		//printf("process nodes\n");
+		////printf("process nodes\n");
 		for (auto node : m_fields->m_nodes) {
-			//printf("removing node %X\n", node);
+			////printf("removing node %X\n", node);
 			node->removeMeAndCleanup();
 		}
 
-		//printf("process array cleaning\n");
+		////printf("process array cleaning\n");
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
+		m_fields->m_particles.clear();
 
 		if (!DMSettings::showGhost) return;
 
-		//printf("process ghost traits\n");
+		////printf("process ghost traits\n");
 		m_fields->m_currentGhost = m_fields->m_ghostPosition;
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
 
-		//printf("getting attached players\n");
+		////printf("getting attached players\n");
 		std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
 
 		i = 0;
 		while (i < attachedPlayers.size() && i < m_fields->m_ghosts.size()) {
-			//printf("processing ghost %d\n", i);
+			////printf("processing ghost %d\n", i);
 			auto ghost = m_fields->m_ghosts[i];
 			auto player = attachedPlayers[i];
 
