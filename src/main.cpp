@@ -54,7 +54,7 @@ public:
 	GJGameLevel *lvl = nullptr;
 
 	void FLAlert_Clicked(FLAlertLayer *l, bool idk) override {
-		if (idk != 0) return;
+		if (idk != 1) return;
 
 		auto filepath = generateFilename(this->lvl);
 
@@ -92,7 +92,7 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 	void onDeathReplay(CCObject *target) {
 		DMSettings::delegate.lvl = DMSettings::levelInstance;
 
-		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "Yes", "No");
+		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "No", "Yes");
 		l->show(); 
 	}
 
@@ -126,7 +126,7 @@ class $modify(XEditLevelLayer, EditLevelLayer) {
 	void onDeathReplay(CCObject *target) {
 		DMSettings::delegate.lvl = DMSettings::levelInstance;
 
-		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "Yes", "No");
+		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "No", "Yes");
 		l->show(); 
 	}
 	
@@ -197,6 +197,7 @@ class $modify(PlayerObject) {
 class AdvancedCCPoint : public cocos2d::CCPoint {
 public:
 	float rotation;
+	float scale;
 };
 
 // class GhostPlayer {
@@ -254,6 +255,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			point.y = player_pos.y;
 
 			point.rotation = pl->getRotation();
+			point.scale = pl->getScale();
 
 			pos._players.push_back(point);
 		}
@@ -289,6 +291,7 @@ class $modify(XPlayLayer, PlayLayer) {
 
 			ghost->setPosition(pos);
 			ghost->setRotation(player_pos.rotation);
+			ghost->setScale(player_pos.scale);
 
 			i++;
 		}
@@ -525,19 +528,21 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->addChild(spr);
 
 				if(DMSettings::showParticles) {
-					// CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
+					CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
 					// // wave->m_opacityMultiplier = 0.5f;
-					// wave->m_color = m_player1->getSecondColor();
+					wave->m_color = m_player1->getColor();
 
-					// nd->addChild(wave);
+					nd->addChild(wave);
 
-					auto particle = CCParticleSystemQuad::create("explodeEffect.plist", false);
-					particle->setPositionX(0.f);
-					particle->setPositionY(0.f);
+					// auto particle = CCParticleSystemQuad::create("explodeEffect.plist", false);
+					// particle->setPositionX(0.f);
+					// particle->setPositionY(0.f);
 
-					m_fields->m_particles.push_back(particle);
+					// m_fields->m_particles.push_back(particle);
 
-					nd->addChild(particle);
+					spawnParticle("explodeEffect.plist", 0, kCCPositionTypeRelative, {x, y});
+
+					// nd->addChild(particle);
 				}
 
 				if(DMSettings::playDeathEffect) {
