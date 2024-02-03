@@ -1,12 +1,6 @@
 // clang-format off
 
-/**
- * Include the Geode headers.
- */
 #include <Geode/Geode.hpp>
-/**
- * Required to modify the MenuLayer class
- */
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/LevelInfoLayer.hpp>
@@ -157,15 +151,12 @@ class $modify(XEditLevelLayer, EditLevelLayer) {
 };
 
 class $modify(PlayerObject) {
-	
 	void playDeathEffect() {
 		if (DMSettings::currentlyInPractice && !DMSettings::recordPractice) return PlayerObject::playDeathEffect();
 		
 		nlohmann::json attempt = nlohmann::json::array();
 
 		auto pl = PlayLayer::get();
-
-		// float percentage = getPositionX() / pl->m_realLevelLength * 100.f;
 
 		double extra = (DMSettings::currentAttempt == 1);
 		extra = 0;
@@ -206,8 +197,6 @@ public:
 
 class GhostPosition {
 public:
-	// AdvancedCCPoint _player1;
-	// AdvancedCCPoint _player2;
 	std::vector<AdvancedCCPoint> _players;
 };
 
@@ -319,8 +308,6 @@ class $modify(XPlayLayer, PlayLayer) {
 			DMSettings::isOldLevel = false;
 		}
 
-		//printf("DMSettings::isOldLevel=%d\n", DMSettings::isOldLevel);
-
 		m_fields->m_deathLayer = CCLayer::create();
 
 		m_fields->m_deaths.clear();
@@ -334,8 +321,6 @@ class $modify(XPlayLayer, PlayLayer) {
 		if (!res) return false;
 
 		m_fields->m_camera1 = m_player1;
-
-		// //printf("anim interval: %f\n", CCDirector::sharedDirector()->getAnimationInterval());
 		
 		int id = level->m_levelID.value();
 
@@ -367,23 +352,16 @@ class $modify(XPlayLayer, PlayLayer) {
 			i++;
 		}
 
-		////printf("init playlayer\n");
-
 		auto object_layer = this->m_objectLayer;
 
 		object_layer->addChild(m_fields->m_deathLayer, 65535);
 
-		////printf("getting attached players\n");
-
 		auto pllist = getAttachablePlayers();
-
-		////printf("creating ghost variants\n");
 
 		i = 0;
 		while (i < pllist.size()) {
 			if (pllist[i] == nullptr) continue;
 
-			// int p0, int p1, GJBaseGameLayer* p2, cocos2d::CCLayer* p3, bool p4
 			auto po = PlayerObject::create(rand() % 12, rand() % 12, dynamic_cast<GJBaseGameLayer *>(this), dynamic_cast<CCLayer *>(this), true);
 
 			po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
@@ -409,8 +387,6 @@ class $modify(XPlayLayer, PlayLayer) {
 			i++;
 		}
 
-		// int m_currentAttempt;
-
 		if (m_fields->m_XcurrentAttempt == 1) {
 			this->schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 1.f, false, 1.f);
 		} else {
@@ -424,11 +400,6 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 	void updateVisibility(float delta) {
 		updatePlaytime(delta);
-
-		// for (auto p : m_fields->m_particles) {
-		// 	p->setPositionX(p->getPositionX() + (m_fields->m_cameraDelta * 10.f));
-		// 	// //printf("particle x is set to %f\n", p->getPositionX());
-		// }
 
 		DMSettings::currentlyInPractice = m_isPracticeMode;
 
@@ -453,8 +424,6 @@ class $modify(XPlayLayer, PlayLayer) {
 		int i = 0;
 
 		bool showDeaths = !m_isPracticeMode && DMSettings::showDeaths;
-
-		// //printf("can show deaths: %d\n", showDeaths);
 
 		if (DMSettings::showGhost) {
 			for (auto ghost : m_fields->m_ghosts) {
@@ -509,13 +478,12 @@ class $modify(XPlayLayer, PlayLayer) {
 				CCSprite *spr = CCSprite::createWithSpriteFrameName("GJ_deleteIcon_001.png");
 
 				spr->setScale(1.3f);
+
 				nd->setPositionX(x);
 				nd->setPositionY(y);
 
-				//printf("creating death object at %f %f (time=%f)\n", x, y, (float)playTime);
-
 				spr->setOpacity(0);
-				spr->runAction(CCFadeIn::create(0.2f));
+				spr->runAction(CCFadeTo::create(0.2f, 128));
 				
 				// for (auto ghost : m_fields->m_ghosts) {
 					
@@ -534,19 +502,10 @@ class $modify(XPlayLayer, PlayLayer) {
 
 					nd->addChild(wave);
 
-					// auto particle = CCParticleSystemQuad::create("explodeEffect.plist", false);
-					// particle->setPositionX(0.f);
-					// particle->setPositionY(0.f);
-
-					// m_fields->m_particles.push_back(particle);
-
 					spawnParticle("explodeEffect.plist", 0, kCCPositionTypeRelative, {x, y});
-
-					// nd->addChild(particle);
 				}
 
 				if(DMSettings::playDeathEffect) {
-					// GameSoundManager::get()->playEffect("explode_11.ogg", 0.5f, 0.5f, 0.5f);
 					FMODAudioEngine *engine = FMODAudioEngine::sharedEngine();
 					engine->stopAllEffects();
 					engine->playEffect("explode_11.ogg", 1.f, 0.5f, 0.5f);
@@ -563,48 +522,38 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	void resetLevel() {
-		//printf("resetting level\n");
 		DMSettings::playTime = 0;
 
-		PlayLayer::resetLevel(); // CRASH
+		PlayLayer::resetLevel();
 
 		m_fields->m_XcurrentAttempt++;
 
 		size_t i = 0;
 
-		////printf("process attempts\n");
 		while (i < _progresses["attempts"].size()) {
 			_progresses["attempts"][i][2] = 0;
-
-			////printf("processed attempt %d\n", i);
 
 			i++;
 		}
 
-		////printf("process nodes\n");
 		for (auto node : m_fields->m_nodes) {
-			////printf("removing node %X\n", node);
 			node->removeMeAndCleanup();
 		}
 
-		////printf("process array cleaning\n");
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
 		m_fields->m_particles.clear();
 
 		if (!DMSettings::showGhost) return;
 
-		////printf("process ghost traits\n");
 		m_fields->m_currentGhost = m_fields->m_ghostPosition;
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
 
-		////printf("getting attached players\n");
 		std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
 
 		i = 0;
 		while (i < attachedPlayers.size() && i < m_fields->m_ghosts.size()) {
-			////printf("processing ghost %d\n", i);
 			auto ghost = m_fields->m_ghosts[i];
 			auto player = attachedPlayers[i];
 
