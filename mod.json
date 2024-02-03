@@ -5,9 +5,9 @@
 	"id": "org.dogotrigger.deathreplay",
 	"name": "Death Replay",
 	"developer": "dogotrigger",
-	"repository": "https://github.com/SergeyMC9730/attemptholder",
+	"repository": "https://github.com/SergeyMC9730/deathreplay",
 	"issues": {
-		"url": "https://github.com/SergeyMC9730/attemptholder/issues",
+		"url": "https://github.com/SergeyMC9730/deathreplay/issues",
 		"info": "Any bugs with Death Replay should be reported here."
 	},
 	"description": "Shows all of your level deaths while playing it",
