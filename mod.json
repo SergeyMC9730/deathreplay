@@ -1,6 +1,6 @@
 {
 	"geode": "v2.0.0-beta.12",
-	"version": "v1.2.0-beta.4",
+	"version": "v1.2.0-beta.5",
 	"gd": "2.204",
 	"id": "org.dogotrigger.deathreplay",
 	"name": "Death Replay",
@@ -33,6 +33,12 @@
 		"record-practice": {
 			"name": "Record in Practice Mode",
 			"description": "Record all death positions in Practice Mode.",
+			"type": "bool",
+			"default": false
+		},
+		"record-globed-players": {
+			"name": "Record Players in Globed",
+			"description": "Allows Death Replay to record online players.",
 			"type": "bool",
 			"default": false
 		}

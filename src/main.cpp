@@ -18,7 +18,7 @@
 
 #include <Geode/binding/CCCircleWave.hpp>
 #include <Geode/cocos/particle_nodes/CCParticleSystemQuad.h>
-#include <Geode/binding/FModAudioEngine.hpp>
+#include <Geode/binding/FMODAudioEngine.hpp>
 
 using namespace geode::prelude;
 // using namespace geode::modifier;
@@ -63,6 +63,7 @@ namespace DMSettings {
 	bool showDeaths = true;
 	bool showParticles = true;
 	bool playDeathEffect = true;
+	bool withGlobed = false;
 	
 	bool recordPractice = false;
 	bool currentlyInPractice = false;
@@ -80,6 +81,7 @@ namespace DMSettings {
 
 	DRDelegate delegate;
 	GJGameLevel *levelInstance;
+	PlayLayer *actionInstance;
 }
 
 class $modify(XLevelInfoLayer, LevelInfoLayer) {
@@ -157,6 +159,14 @@ class $modify(PlayerObject) {
 		nlohmann::json attempt = nlohmann::json::array();
 
 		auto pl = PlayLayer::get();
+
+		if (!DMSettings::withGlobed) {
+			if (pl->m_player1 == this || pl->m_player2 == this) {
+				// do nothing
+			} else {
+				return PlayerObject::playDeathEffect();
+			}
+		}
 
 		double extra = (DMSettings::currentAttempt == 1);
 		extra = 0;
@@ -301,6 +311,8 @@ class $modify(XPlayLayer, PlayLayer) {
 		DMSettings::currentAttempt = 1;
 		// TEMP
 		DMSettings::showGhost = false;
+		DMSettings::withGlobed = Mod::get()->getSettingValue<bool>("record-globed-players");
+		DMSettings::actionInstance = this;
 
 		if (level->m_gameVersion <= 21) {
 			DMSettings::isOldLevel = true;

@@ -1,3 +1,15 @@
+# v1.2.0 Beta 5
+### Gameplay Changes
+ * New setting: `Record Players in Globed`
+   - This setting allows Death Replay to record online players if enabled.
+   - **Disabled by default**.
+   - Fixes `#6`.
+### Technical Changes
+#### Since v1.2.0 Beta 1
+ * `playTime` parameter is fully ignored if level was not released and updated since 2.2+ release
+### Mod Description Changes
+ * Changelog in `README.md` has been updated
+
 # v1.2.0 Beta 4
 ### Gameplay Changes
  * 'X' sprite is now half visible

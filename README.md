@@ -6,6 +6,55 @@ Level on logo: **Light Spectrum**
 
 # Changelog
 
+# v1.2.0 Beta 5
+### Gameplay Changes
+ * New setting: `Record Players in Globed`
+   - This setting allows Death Replay to record online players if enabled.
+   - **Disabled by default**.
+   - Fixes `#6`.
+### Technical Changes
+#### Since v1.2.0 Beta 1
+ * `playTime` parameter is fully ignored if level was not released and updated since 2.2+ release
+### Mod Description Changes
+ * Changelog in `README.md` has been updated
+
+# v1.2.0 Beta 4
+### Gameplay Changes
+ * 'X' sprite is now half visible
+### Techinical Changes
+ * Code is cleaned up a bit
+### Mod Description Changes
+ * Repository link is updated to use proper repo name
+
+# v1.2.0 Beta 3
+### Gameplay Changes
+ * Pressing ESC on removing Death Replay file popup now doesn't do anything (#2)
+### Techinical Changes
+ * Death particles are now spawned properly
+ * SDK has been updated to `v2.0.0-beta.12`
+ * Ghost's recording now includes Player scaling
+
+# v1.2.0 Beta 2
+### Gameplay Changes
+ * Now you can remove Death Replay file for any level by clicking to red back arrow button
+### Technical Changes
+ * SDK has been updated to `v2.0.0-beta.11`
+ * Bugfixes
+ * playTime parameter is now fully ignored if played level has been created/updated last time before 2.2
+ * Debug output has been removed
+### Mod Description Changes
+ * `changelog.md` formatting has been changed a little bit
+
+# v1.2.0 Beta 1
+### Gameplay Changes
+ * Ghost has been temporarily disabled; it's very broken in 2.2
+### Technical Changes
+ * SDK has been updated to `v2.0.0-beta.9`
+ * Ghost now waste less CPU time when its hidden than in DR v1.1.0
+ * Death Replay level file now has new parameter - playTime
+   - `playTime` parameter is fully ignored while being in Platformer mode.
+   - Normal Mode can use playTime parameter if it possible.
+
 # v1.1.1
 ### Gameplay Changes
  * Fixed bug where Ghost didn't get hidden when he was said to
