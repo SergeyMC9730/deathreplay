@@ -6,6 +6,19 @@ Level on logo: **Light Spectrum**
 
 # Changelog
 
+# v1.2.0 Beta 8
+### Technical Changes
+ * Fixed typo `(RayDeeUx)`
+ * 'Remove Death Replay data' button is now placed correctly in the Level Info menu `(RayDeeUx)`
+
+# v1.2.0 Beta 7
+### Technical Changes
+ * Try to port mod to Android (failed)
+
+# v1.2.0 Beta 6
+### Technical Changes
+ * Try to port mod to Android (failed)
+
 # v1.2.0 Beta 5
 ### Gameplay Changes
  * New setting: `Record Players in Globed`
