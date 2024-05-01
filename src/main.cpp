@@ -85,15 +85,19 @@ namespace DMSettings {
 }
 
 class $modify(XLevelInfoLayer, LevelInfoLayer) {
+	static void onModify(auto & self)
+	{
+		(void) self.setHookPriority("LevelInfoLayer::init", INT32_MIN + 1);
+	}
 	void onDeathReplay(CCObject *target) {
 		DMSettings::delegate.lvl = DMSettings::levelInstance;
 
-		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "No", "Yes");
+		FLAlertLayer *l = FLAlertLayer::create(&DMSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> the Death Replay file for this <cy>level</c>?", "No", "Yes");
 		l->show(); 
 	}
 
 	bool init(GJGameLevel *lvl, bool idk) {
-		if (!LevelInfoLayer::init(lvl, idk)) return false;
+		if (!LevelInfoLayer::init(lvl, idk)) { return false; }
 
 		DMSettings::levelInstance = lvl;
 
@@ -102,17 +106,10 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 		btn_spr->setFlipX(true);
 
 		CCMenuItemSpriteExtra *spr_men = CCMenuItemSpriteExtra::create(btn_spr, this, menu_selector(XLevelInfoLayer::onDeathReplay));
+		spr_men->setID("remove-file"_spr);
 
-		CCMenu *menu = CCMenu::create();
-
-		menu->addChild(spr_men);
-
-		CCDirector *dir = CCDirector::sharedDirector();
-		auto sz = dir->getWinSize();
-
-		menu->setPosition(65, sz.height - btn_spr->getContentSize().height + 8);
-
-		addChild(menu);
+		getChildByID("back-menu")->addChild(spr_men);
+		getChildByID("back-menu")->updateLayout();
 
 		return true;
 	}
