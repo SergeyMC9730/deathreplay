@@ -1,9 +1,9 @@
 {
-	"geode": "2.0.0-beta.25",
-	"version": "v1.2.0-beta.8",
+	"geode": "3.0.0-alpha.2",
+	"version": "v1.2.0-beta.9",
 	"gd": {
-		"android": "2.205",
-		"win": "2.204"
+		"android": "2.206",
+		"win": "2.206"
 	},
 	"id": "dogotrigger.deathreplay",
 	"name": "Death Replay",
@@ -29,7 +29,7 @@
 		},
 		"show-particles": {
 			"name": "Show Particles",
-			"description": "Shows death particles.",
+			"description": "Shows death particles. Functionality of this feature is currently limited on Android and Windows.",
 			"type": "bool",
 			"default": true
 		},

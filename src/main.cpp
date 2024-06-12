@@ -208,25 +208,29 @@ public:
 };
 
 class $modify(XPlayLayer, PlayLayer) {
-	std::vector<CCSprite *> m_deaths = {};
-	std::vector<CCNode *> m_nodes = {};
-	std::vector<cocos2d::CCParticleSystemQuad *> m_particles;
-	std::vector<GhostPosition> m_ghostPosition = {};
-	std::vector<GhostPosition> m_currentGhost = {};
-	bool m_processGhost = false;
-	bool m_processPlaytime = false;
+	struct Fields {
+		std::vector<CCSprite *> m_deaths = {};
+		std::vector<CCNode *> m_nodes = {};
+		std::vector<cocos2d::CCParticleSystemQuad *> m_particles;
+		std::vector<GhostPosition> m_ghostPosition = {};
+		std::vector<GhostPosition> m_currentGhost = {};
+		bool m_processGhost = false;
+		bool m_processPlaytime = false;
 
-	CCLayer *m_deathLayer = nullptr;
+		CCLayer *m_deathLayer = nullptr;
 
-	std::vector<PlayerObject *> m_ghosts = {};
+		std::vector<PlayerObject *> m_ghosts = {};
 
-	int m_ghIndex = 0;
-	int m_XcurrentAttempt = 1;
+		int m_ghIndex = 0;
+		int m_XcurrentAttempt = 1;
 
-	float m_cameraDelta = 0.f;
-	float m_cameraPrev = 0.f;
-	float m_cameraCur = 0.f;
-	CCNode *m_camera1 = nullptr;
+		float m_cameraDelta = 0.f;
+		float m_cameraPrev = 0.f;
+		float m_cameraCur = 0.f;
+		CCNode *m_camera1 = nullptr;
+
+		bool m_saveCalled = false;
+	};
 
 	std::vector<PlayerObject *> getAttachablePlayers() {
 		return { m_player1, m_player2 };
@@ -505,13 +509,17 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->addChild(spr);
 
 				if(DMSettings::showParticles) {
+#ifdef _WIN32
 					CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
 					// // wave->m_opacityMultiplier = 0.5f;
 					wave->m_color = m_player1->getColor();
 
 					nd->addChild(wave);
+#endif
 
+#ifndef _WIN32
 					spawnParticle("explodeEffect.plist", 0, kCCPositionTypeRelative, {x, y});
+#endif
 				}
 
 				if(DMSettings::playDeathEffect) {

@@ -1,3 +1,8 @@
+# v1.2.0 Beta 9
+### Technical Changes
+ * SDK has been updated to `v3.0.0-alpha.2`
+ * Added Android support
+
 # v1.2.0 Beta 8
 ### Technical Changes
  * Fixed typo `(RayDeeUx)`
