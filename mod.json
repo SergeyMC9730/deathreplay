@@ -45,5 +45,8 @@
 			"type": "bool",
 			"default": false
 		}
-	}
+	},
+	"dependencies": [
+		{"id": "geode.node-ids", "importance": "required", "version": "*"}
+	]
 }
