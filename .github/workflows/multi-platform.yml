@@ -37,7 +37,7 @@ jobs:
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
-          bindings: geode-sdk/bindings
+          bindings: SergeyMC9730/bindings
           bindings-ref: main
           sdk: 'nightly'
           combine: true
