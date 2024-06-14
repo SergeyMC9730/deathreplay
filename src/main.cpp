@@ -106,7 +106,7 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 		btn_spr->setFlipX(true);
 
 		CCMenuItemSpriteExtra *spr_men = CCMenuItemSpriteExtra::create(btn_spr, this, menu_selector(XLevelInfoLayer::onDeathReplay));
-		spr_men->setID("remove-file"_spr);
+		spr_men->setID("dr-remove-file");
 
 		getChildByID("back-menu")->addChild(spr_men);
 		getChildByID("back-menu")->updateLayout();

@@ -1,3 +1,7 @@
+# v1.2.0 Beta 10
+### Technical Changes
+ * Fixed ABI bug on Android
+
 # v1.2.0 Beta 9
 ### Technical Changes
  * SDK has been updated to `v3.0.0-alpha.2`
