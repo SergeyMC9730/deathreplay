@@ -1,3 +1,11 @@
+# v1.2.0
+### Gameplay Changes
+ * Ghost has been rewritten and enabled again. If you don't what is Ghost I'll give you some info about it
+   - This Ghost shows after your death or level completion and replays previous inputs.
+   - Ghost is shown by default. You can disable it in the mod settings.
+   - If you experience inconsistent framerate try to disable Ghost in the mod settings.
+   - **Ghost cannot be attached to the online players. (Globed players, for example)**
+
 # v1.2.0 Beta 11
 ### Technical Changes
  * SDK has been updated to `v3.0.0-beta.1`
