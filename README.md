@@ -6,6 +6,10 @@ Level on logo: **Light Spectrum**
 
 # Changelog
 
+# v1.2.0 Beta 11
+### Technical Changes
+ * SDK has been updated to `v3.0.0-beta.1`
+
 # v1.2.0 Beta 10
 ### Technical Changes
  * Fixed ABI bug on Android

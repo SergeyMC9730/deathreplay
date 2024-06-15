@@ -39,7 +39,7 @@ jobs:
         with:
           bindings: SergeyMC9730/bindings
           bindings-ref: main
-          sdk: 'nightly'
+          sdk: 'latest'
           combine: true
           target: ${{ matrix.config.target }}
 
