@@ -1,3 +1,8 @@
+# v1.2.1
+### Gameplay Changes
+ * Ghost replay has been improved
+ * Bugfixes
+
 # v1.2.0
 ### Gameplay Changes
  * Ghost has been rewritten and enabled again. If you don't what is Ghost I'll give you some info about it

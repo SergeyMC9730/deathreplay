@@ -198,12 +198,14 @@ class $modify(XLevelSelectLayer, LevelSelectLayer) {
 	}
 
 	void hideButton() {
-		auto btn = getChildByIDRecursive("dr-remove-file");
+		auto btn = (CCMenuItemSpriteExtra *)getChildByIDRecursive("dr-remove-file");
 		btn->runAction(CCFadeTo::create(0.1f, 0.f));
+		btn->setEnabled(false);
 	}
 	void showButton() {
-		auto btn = getChildByIDRecursive("dr-remove-file");
+		auto btn = (CCMenuItemSpriteExtra *)getChildByIDRecursive("dr-remove-file");
 		btn->runAction(CCFadeTo::create(0.1f, 255.f));
+		btn->setEnabled(true);
 	}
 
 	void checkPossibility() {
@@ -244,6 +246,10 @@ class $modify(XLevelSelectLayer, LevelSelectLayer) {
 		addChild(menu);
 
 		schedule(schedule_selector(XLevelSelectLayer::checkPossibilityS), 0.1f);
+
+#ifndef _WIN32
+		menu->setPosition({9999, 9999});
+#endif
 
 		return true;
 	}
@@ -300,7 +306,9 @@ struct PlayerEvent {
 		ToggleRollMode,
 		ToggleSpiderMode,
 		ToggleSwingMode,
-		ToggleVisibility
+		ToggleVisibility,
+		PlayDeathEffect,
+		PlaySpawnEffect
 	};
 
 	enum PlayerEventEnum event;
@@ -308,14 +316,18 @@ struct PlayerEvent {
 	unsigned char p0;
 	unsigned char p1;
 
-	inline operator PlayerEventEnum() {
+	operator PlayerEventEnum() {
 		return event;
-	}
+	};
 };
 
 class GhostPlayerFrame {
 protected:
-	inline void processEventOnPlayer(struct PlayerEvent event, PlayerObject *obj) {
+	void processEventOnPlayer(struct PlayerEvent event, PlayerObject *obj) {
+		log::info("+ Running event with ID {}: ", (int)((PlayerEvent::PlayerEventEnum)event));
+
+		bool success = true;
+
 		switch ((PlayerEvent::PlayerEventEnum)event) {
 			case PlayerEvent::ToggleBirdMode: {
 				obj->toggleBirdMode((bool)event.p0, (bool)event.p1);
@@ -357,16 +369,33 @@ protected:
 				obj->toggleVisibility((bool)event.p0);
 				break;
 			}
-			default: {
+			case PlayerEvent::PlayDeathEffect: {
+				obj->playDeathEffect();
+				obj->m_iconSprite->runAction(CCFadeTo::create(0.2f, 0));
+				obj->m_iconSpriteSecondary->runAction(CCFadeTo::create(0.2f, 0));
 				break;
 			}
+			case PlayerEvent::PlaySpawnEffect: {
+				obj->playSpawnEffect();
+				break;
+			}
+			default: {
+				success = false;
+				break;
+			}
+		}
+
+		if (success) {
+			log::info("+ SUCCESS");
+		} else {
+			log::info("- FAIL");
 		}
 	}
 public:
 	AdvancedCCPoint _pos;
 	std::vector<struct PlayerEvent> _events;
 
-	inline void processEventsOnPlayer(PlayerObject *obj) {
+	void processEventsOnPlayer(PlayerObject *obj) {
 		for (auto event : _events) {
 			processEventOnPlayer(event, obj);
 		}
@@ -411,10 +440,15 @@ class $modify(XPlayLayer, PlayLayer) {
 	};
 
 	void offsetGhostBySeconds(float _sec) {
+		if (!m_fields->m_processGhost) return;
+
 		float delta = 0.f;
 
 		for (float sec = 0.f; sec < _sec; sec += delta) {
-			if (m_fields->m_ghIndex > m_fields->m_currentGhost.size()) return;
+			if (m_fields->m_ghIndex >= m_fields->m_currentGhost.size()) {
+				m_fields->m_processGhost = false;
+				return;
+			}
 
 			GhostPosition pos = m_fields->m_currentGhost[m_fields->m_ghIndex];
 			delta = pos._delta;
@@ -533,7 +567,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			po->setSecondColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
 			po->setColor({(unsigned char)(rand() % 255), (unsigned char)(rand() % 255), (unsigned char)(rand() % 255)});
 
-			po->unscheduleUpdate();
+			// po->unscheduleUpdate();
 
 			CCPoint pos;
 
@@ -833,7 +867,11 @@ class $modify(XPlayLayer, PlayLayer) {
 };
 
 class $modify(PlayerObject) {
-	void playDeathEffect() {
+	void playerDestroyed(bool p0) {
+		log::info("PLAYER DESTROYED WITH P0={}", p0);
+
+		PlayerObject::playerDestroyed(p0);
+
 		if (DRSettings::currentlyInPractice && !DRSettings::recordPractice) return PlayerObject::playDeathEffect();
 		
 		nlohmann::json attempt = nlohmann::json::array();
@@ -844,7 +882,7 @@ class $modify(PlayerObject) {
 			if (pl->m_player1 == this || pl->m_player2 == this) {
 				// do nothing
 			} else {
-				return PlayerObject::playDeathEffect();
+				return PlayerObject::playerDestroyed(p0);
 			}
 		}
 
@@ -867,8 +905,6 @@ class $modify(PlayerObject) {
 		o << _progresses;
 
 		o.close();
-
-		PlayerObject::playDeathEffect();
 	}
 
 	void pushEvent(struct PlayerEvent ev) {
@@ -887,6 +923,12 @@ class $modify(PlayerObject) {
 		}
 
 		DRSettings::actionInstance->m_fields->m_requestedEvents[m[this]].push_back(ev);
+	}
+
+	void playDeathEffect() {
+		pushEvent({PlayerEvent::PlayDeathEffect});
+
+		PlayerObject::playDeathEffect();
 	}
 
 	void toggleBirdMode(bool p0, bool p1) {
@@ -938,5 +980,10 @@ class $modify(PlayerObject) {
 		PlayerObject::toggleVisibility(p0);
 
 		pushEvent({PlayerEvent::ToggleVisibility, p0});
+	}
+	void playSpawnEffect() {
+		pushEvent({PlayerEvent::PlaySpawnEffect});
+
+		PlayerObject::playSpawnEffect();
 	}
 };
