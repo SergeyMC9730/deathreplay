@@ -1,6 +1,6 @@
 {
 	"geode": "3.0.0-beta.1",
-	"version": "v1.2.1",
+	"version": "v1.2.2",
 	"gd": {
 		"android": "2.206",
 		"win": "2.206"
@@ -47,12 +47,31 @@
 		},
 		"record-globed-players": {
 			"name": "Record Players in Globed",
-			"description": "Allows Death Replay to record online players.",
+			"description": "Allows Death Replay to record deaths caused by online players.",
 			"type": "bool",
 			"default": false
+		},
+		"debug-mode": {
+			"name": "Debug Mode",
+			"description": "Spams terminal with debug output when this feature is enabled. Useful for debugging bugs and crashes.",
+			"type": "bool",
+			"default": false
+		},
+		"ghost-offset": {
+			"name": "Ghost Offset",
+			"description": "Offsets ghost's position by approximately X seconds.",
+			"type": "float",
+			"default": 0.3,
+			"min": 0,
+			"max": 5
 		}
 	},
 	"dependencies": [
 		{"id": "geode.node-ids", "importance": "required", "version": ">=1.12.0"}
-	]
+	],
+	"resources": {
+		"sprites": [
+            "resources/DR_globedIcon_001.png"
+        ]
+	}
 }

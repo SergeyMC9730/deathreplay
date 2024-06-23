@@ -84,9 +84,13 @@ namespace DRSettings {
 
 	bool isOldLevel = false;
 
+	bool debugMode = false;
+
 	DRDelegate delegate;
 	GJGameLevel *levelInstance;
 	XPlayLayer *actionInstance;
+
+	double ghostOffset;
 }
 
 namespace DRGlobal {
@@ -126,6 +130,27 @@ namespace DRGlobal {
 
 		return false;
 	}
+
+	template<typename T>
+	std::vector<T *> findInstancesOfObj(cocos2d::CCNode *node) {
+		CCArray *children = node->getChildren();
+
+		std::vector<T *> objs = {};
+
+		for (int i = 0; i < children->count(); i++) {
+			cocos2d::CCObject *_obj = children->objectAtIndex(i);
+
+			T *dyn = typeinfo_cast<T *>(_obj);
+
+			if (dyn != nullptr) {
+				objs.push_back(dyn);
+			}
+		}
+
+		return objs;
+	}
+
+	bool deadPlayerIsOffline = true;
 };
 
 class $modify(XLevelInfoLayer, LevelInfoLayer) {
@@ -324,9 +349,9 @@ struct PlayerEvent {
 class GhostPlayerFrame {
 protected:
 	void processEventOnPlayer(struct PlayerEvent event, PlayerObject *obj) {
-		log::info("+ Running event with ID {}: ", (int)((PlayerEvent::PlayerEventEnum)event));
+		if (DRSettings::debugMode) log::info("+ Running event with ID {}: ", (int)((PlayerEvent::PlayerEventEnum)event));
 
-		bool success = true;
+		// bool success = true;
 
 		switch ((PlayerEvent::PlayerEventEnum)event) {
 			case PlayerEvent::ToggleBirdMode: {
@@ -380,16 +405,16 @@ protected:
 				break;
 			}
 			default: {
-				success = false;
+				// success = false;
 				break;
 			}
 		}
 
-		if (success) {
-			log::info("+ SUCCESS");
-		} else {
-			log::info("- FAIL");
-		}
+		// if (success) {
+		// 	if (DRSettings::debugMode) log::info("+ SUCCESS");
+		// } else {
+		// 	if (DRSettings::debugMode) log::info("- FAIL");
+		// }
 	}
 public:
 	AdvancedCCPoint _pos;
@@ -417,7 +442,6 @@ class $modify(XPlayLayer, PlayLayer) {
 		std::vector<GhostPosition> m_ghostPosition = {};
 		std::vector<GhostPosition> m_currentGhost = {};
 		bool m_processGhost = false;
-		bool m_processPlaytime = false;
 
 		CCLayer *m_deathLayer = nullptr;
 
@@ -434,24 +458,51 @@ class $modify(XPlayLayer, PlayLayer) {
 		bool m_saveCalled = false;
 
 		bool m_gameBegan = false;
+		bool m_shouldDelayGhost = false;
 
 		// std::vector<struct PlayerEvent> m_requestedEvents;
 		std::map<int, std::vector<struct PlayerEvent>> m_requestedEvents;
 	};
 
-	void offsetGhostBySeconds(float _sec) {
+	void offsetGhostBySeconds(double _sec) {
 		if (!m_fields->m_processGhost) return;
+
+		if (_sec <= 0.f) return;
 
 		float delta = 0.f;
 
-		for (float sec = 0.f; sec < _sec; sec += delta) {
+		for (double sec = 0.f; sec < _sec; sec += delta) {
 			if (m_fields->m_ghIndex >= m_fields->m_currentGhost.size()) {
 				m_fields->m_processGhost = false;
 				return;
 			}
 
-			GhostPosition pos = m_fields->m_currentGhost[m_fields->m_ghIndex];
-			delta = pos._delta;
+			GhostPosition frame = m_fields->m_currentGhost[m_fields->m_ghIndex];
+			if (frame._delta != 0.f) {
+				delta = frame._delta;
+			};
+
+			size_t i = 0;
+			while (i < frame._players.size() && i < m_fields->m_ghosts.size()) {
+				////printf("ghost playback %d at frame %d\n", i, m_fields->m_ghIndex);
+				auto player = frame._players[i];
+				auto player_pos = player._pos;
+				// auto player = attachedPlayers[i];
+				auto ghost = m_fields->m_ghosts[i];
+
+				CCPoint pos;
+
+				pos.x = player_pos.x;
+				pos.y = player_pos.y;
+
+				ghost->setPosition(pos);
+				ghost->setRotation(player_pos.rotation);
+				ghost->setScale(player_pos.scale);
+
+				player.processEventsOnPlayer(ghost);
+
+				i++;
+			}
 
 			m_fields->m_ghIndex++;
 		}
@@ -515,13 +566,15 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_ghostPosition.push_back(pos);
 	}
 	void addPlayerPositionWait(float delta) {
+		if (DRSettings::debugMode) log::info("addPlayerPositionWait({});", delta);
+
 		if (DRSettings::showGhost) {
 			m_fields->m_processGhost = true;
 		}
-		m_fields->m_processPlaytime = true;
 	}
 
 	void playGhost(float delta) {
+		if (!m_fields->m_processGhost || m_fields->m_shouldDelayGhost) return;
 		if (m_fields->m_ghIndex >= m_fields->m_currentGhost.size() || m_isPracticeMode) return;
 
 		// std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
@@ -553,6 +606,22 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_ghIndex++;
 	}
 
+	CCNode *findBatchNode() {
+		auto shaders = DRGlobal::findInstancesOfObj<ShaderLayer>(this);
+		CCNode *searchNode = this;
+
+		if (shaders.size() != 0) {
+			searchNode = shaders[0];
+		}
+
+		CCNode *mainNode = searchNode->getChildByID("main-node");
+		if (mainNode == nullptr) return nullptr;
+
+		CCNode *batchLayer = mainNode->getChildByID("batch-layer");
+
+		return batchLayer;
+	}
+
 	void setupGhostPlayers() {
 		auto pllist = getAttachablePlayers();
 
@@ -578,7 +647,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			po->setOpacity(128);
 
 			if (!DRSettings::showGhost || DRSettings::currentlyInPractice) {
-				log::info("SETTING GHOST OPACITY TO 0");
+				if (DRSettings::debugMode) log::info("SETTING GHOST OPACITY TO 0");
 				po->setOpacity(0);
 			}
 
@@ -586,25 +655,36 @@ class $modify(XPlayLayer, PlayLayer) {
 			po->setID(po_id);
 
 			// idk
-			CCNode *mainNode = this->getChildByID("main-node");
-			CCNode *batchLayer = mainNode->getChildByID("batch-layer");
+			CCNode *batchLayer =  findBatchNode();
 
-			batchLayer->addChild(po, 99);
-
-			m_fields->m_ghosts.push_back(po);
+			if (batchLayer != nullptr) {
+				batchLayer->addChild(po, 99);
+				m_fields->m_ghosts.push_back(po);
+			} else {
+				if (DRSettings::debugMode) log::info("batchLayer is nullptr!");
+			}
 
 			i++;
 		}
 	}
 
 	void startGame() {
-		geode::log::info("STARTGAME\n");
+		if (DRSettings::debugMode) log::info("STARTGAME\n");
 
 		if (m_fields->m_ghosts.size() == 0) {
 			setupGhostPlayers();
 		}
 
-		addPlayerPositionWait(0.f);
+		if (m_fields->m_shouldDelayGhost) {
+			float time = -DRSettings::ghostOffset;
+
+			if (DRSettings::debugMode) log::info("delaying ghost by {} seconds!", time);
+
+			schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 0, 0, time);
+		} else {
+			addPlayerPositionWait(0.f);
+		}
+
 		DRSettings::playTime = 0;
 
 		m_fields->m_gameBegan = true;
@@ -626,6 +706,10 @@ class $modify(XPlayLayer, PlayLayer) {
 		// DRSettings::showGhost = false; // TEMP
 		DRSettings::withGlobed = Mod::get()->getSettingValue<bool>("record-globed-players");
 		DRSettings::actionInstance = this;
+		DRSettings::debugMode = Mod::get()->getSettingValue<bool>("debug-mode");
+		DRSettings::ghostOffset = Mod::get()->getSettingValue<double>("ghost-offset");
+
+		m_fields->m_shouldDelayGhost = DRSettings::ghostOffset < 0.f;
 
 		if (level->m_gameVersion <= 21) {
 			DRSettings::isOldLevel = true;
@@ -687,6 +771,7 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		return true;
 	}
+
 	void updateVisibility(float delta) {
 		updatePlaytime(delta);
 
@@ -694,14 +779,6 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		if (m_fields->m_processGhost) {
 			playGhost(delta);
-		}
-
-		PlayLayer::updateVisibility(delta);
-
-		if (m_fields->m_processPlaytime && !DRSettings::inPlatformer) {
-			m_fields->m_cameraPrev = m_fields->m_cameraCur;
-			m_fields->m_cameraCur = m_fields->m_camera1->getPositionX();
-			m_fields->m_cameraDelta = m_fields->m_cameraCur - m_fields->m_cameraPrev;
 		}
 
 		DRSettings::currentlyInPractice = m_isPracticeMode;
@@ -746,12 +823,19 @@ class $modify(XPlayLayer, PlayLayer) {
 			double playTime = -1; // obj[3]
 			bool playTimeIgnored = DRSettings::inPlatformer;
 
+			bool isOffline = true;
+
 			// v1.2.0 new parameters
 			if (obj.size() >= 4) {
 				playTime = obj[3].get<double>();
 			}
 			if (playTime == -1) playTimeIgnored = true;
 			if (DRSettings::isOldLevel) playTimeIgnored = true;
+
+			// v1.2.2 new parameters
+			if (obj.size() >= 5) {
+				isOffline = obj[4].get<int>();
+			}
 
 			if (!created && 
 				(
@@ -764,9 +848,15 @@ class $modify(XPlayLayer, PlayLayer) {
 
 				CCNode *nd = CCNode::create();
 
-				CCSprite *spr = CCSprite::createWithSpriteFrameName("GJ_deleteIcon_001.png");
+				CCSprite *spr;
 
-				spr->setScale(1.3f);
+				if (!isOffline) {
+					spr = CCSprite::create("dogotrigger.deathreplay/DR_globedIcon_001.png");
+				} else {
+					spr = CCSprite::createWithSpriteFrameName("GJ_deleteIcon_001.png");
+				}
+
+				spr->setScale(1.15f);
 
 				nd->setPositionX(x);
 				nd->setPositionY(y);
@@ -798,7 +888,7 @@ class $modify(XPlayLayer, PlayLayer) {
 #endif
 				}
 
-				if(DRSettings::playDeathEffect) {
+				if(DRSettings::playDeathEffect && isOffline) {
 					FMODAudioEngine *engine = FMODAudioEngine::sharedEngine();
 					engine->stopAllEffects();
 					engine->playEffect("explode_11.ogg", 1.f, 0.5f, 0.5f);
@@ -812,10 +902,12 @@ class $modify(XPlayLayer, PlayLayer) {
 
 			i++;
 		}
+
+		PlayLayer::updateVisibility(delta);
 	}
 
 	void resetLevel() {
-		geode::log::info("RESET LEVEL\n");
+		if (DRSettings::debugMode) log::info("RESET LEVEL\n");
 
 		DRSettings::playTime = 0;
 
@@ -844,9 +936,20 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_currentGhost = m_fields->m_ghostPosition;
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
+		m_fields->m_processGhost = false;
 
-		if (DRSettings::showGhost && m_fields->m_currentGhost.size() > 0) {
-			offsetGhostBySeconds(0.3f);
+		if (m_fields->m_shouldDelayGhost) {
+			float time = -DRSettings::ghostOffset;
+
+			if (DRSettings::debugMode) log::info("delaying ghost by {} seconds!", time);
+
+			schedule(schedule_selector(XPlayLayer::addPlayerPositionWait), 0, 0, time);
+		} else {
+			addPlayerPositionWait(0.f);
+		}
+
+		if (DRSettings::showGhost && m_fields->m_currentGhost.size() > 0 && DRSettings::ghostOffset > 0.f) {
+			offsetGhostBySeconds(DRSettings::ghostOffset);
 		}
 
 		std::vector<PlayerObject *> attachedPlayers = getAttachablePlayers();
@@ -868,7 +971,6 @@ class $modify(XPlayLayer, PlayLayer) {
 
 class $modify(PlayerObject) {
 	void playerDestroyed(bool p0) {
-		log::info("PLAYER DESTROYED WITH P0={}", p0);
 
 		PlayerObject::playerDestroyed(p0);
 
@@ -878,9 +980,17 @@ class $modify(PlayerObject) {
 
 		auto pl = PlayLayer::get();
 
+		if (pl->m_player1 == this || pl->m_player2 == this) {
+			DRGlobal::deadPlayerIsOffline = true;
+		} else {
+			DRGlobal::deadPlayerIsOffline = false;
+		}
+
+		if (DRSettings::debugMode) log::info("PLAYER DESTROYED WITH P0={} (ONLINE={})", p0, !DRGlobal::deadPlayerIsOffline);
+
 		if (!DRSettings::withGlobed) {
 			if (pl->m_player1 == this || pl->m_player2 == this) {
-				// do nothing
+				DRGlobal::deadPlayerIsOffline = true;
 			} else {
 				return PlayerObject::playerDestroyed(p0);
 			}
@@ -888,9 +998,14 @@ class $modify(PlayerObject) {
 
 		attempt.push_back((float)getPositionX());
 		attempt.push_back((float)getPositionY());
-		attempt.push_back((int)1);
+		attempt.push_back((int)0);
 
 		if (!DRSettings::inPlatformer) attempt.push_back((double)DRSettings::playTime);
+		else {
+			attempt.push_back((double)-1);
+		}
+
+		attempt.push_back((int)DRGlobal::deadPlayerIsOffline);
 
 		//printf("added death notif with: %f %f %d %f\n", getPositionX(), getPositionY(), 1, (float)DRSettings::playTime);
 
