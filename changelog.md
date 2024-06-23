@@ -1,3 +1,15 @@
+# v1.2.2
+### Gameplay Changes
+ * Ghost offset now can be changed
+ * All deaths caused by online players (e.g. Geode players) are now blue-tinted
+ * Fixed crash found by `orange059487` and `MasterGameY`
+ * Death marks are now a bit smaller
+### Techinal Changes
+ * New parameter has been added to a player death data: **Player Type**
+  * `0` - **Offline Player**;
+  * `1` - **Globed Player**.
+ * SDK has been updated to `v3.0.0`
+
 # v1.2.1
 ### Gameplay Changes
  * Ghost replay has been improved
