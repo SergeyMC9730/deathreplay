@@ -1,3 +1,7 @@
+# v1.2.3
+### Gameplay Changes
+ * Fixed critical bug **(known as a Practice Mode Bug)**
+
 # v1.2.2
 ### Gameplay Changes
  * Ghost offset now can be changed

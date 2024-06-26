@@ -803,7 +803,7 @@ class $modify(XPlayLayer, PlayLayer) {
 			}
 		}
 
-		if (!showDeaths) return;
+		if (!showDeaths) return PlayLayer::updateVisibility(delta);
 
 		if (m_fields->m_nodes.size() > 1024) {
 			for (auto node : m_fields->m_nodes) {
