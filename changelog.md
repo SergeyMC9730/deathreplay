@@ -1,3 +1,10 @@
+# v1.2.4
+### Gameplay Changes
+ * Small bugfix
+ * Maximum ghost offset is lowered to `3` seconds
+### Mod Description Changes
+ * Fixed formatting in `changelog.md` and `README.md`
+
 # v1.2.3
 ### Gameplay Changes
  * Fixed critical bug **(known as a Practice Mode Bug)**
@@ -10,8 +17,8 @@
  * Death marks are now a bit smaller
 ### Techinal Changes
  * New parameter has been added to a player death data: **Player Type**
-  * `0` - **Offline Player**;
-  * `1` - **Globed Player**.
+   * `0` - **Offline Player**;
+   * `1` - **Globed Player**.
  * SDK has been updated to `v3.0.0`
 
 # v1.2.1

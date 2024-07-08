@@ -1,6 +1,6 @@
 {
-	"geode": "3.0.0",
-	"version": "v1.2.3",
+	"geode": "3.2.0",
+	"version": "v1.2.4",
 	"gd": {
 		"android": "2.206",
 		"win": "2.206"
@@ -23,7 +23,7 @@
 		},
 		"show-ghost": {
 			"name": "Show Ghost",
-			"description": "Show ghost from a previous attempt while playing levels.",
+			"description": "Show ghost from a previous attempt while playing any level.",
 			"type": "bool",
 			"default": true
 		},
@@ -63,7 +63,7 @@
 			"type": "float",
 			"default": 0.3,
 			"min": 0,
-			"max": 5
+			"max": 3
 		}
 	},
 	"dependencies": [

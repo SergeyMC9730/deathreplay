@@ -325,7 +325,6 @@ struct PlayerEvent {
 		ToggleBirdMode = 0,
 		ToggleDartMode,
 		ToggleFlyMode,
-		TogglePlatformerMode,
 		TogglePlayerScale,
 		ToggleRobotMode,
 		ToggleRollMode,
@@ -364,10 +363,6 @@ protected:
 			}
 			case PlayerEvent::ToggleFlyMode: {
 				obj->toggleFlyMode((bool)event.p0, (bool)event.p1);
-				break;
-			}
-			case PlayerEvent::TogglePlatformerMode: {
-				obj->togglePlatformerMode((bool)event.p0);
 				break;
 			}
 			case PlayerEvent::TogglePlayerScale: {
@@ -531,6 +526,8 @@ class $modify(XPlayLayer, PlayLayer) {
 	}
 
 	void addPlayerPosition(float delta) {
+		// log::info("recording!");
+
 		std::vector<PlayerObject *> players = getAttachablePlayers();
 
 		GhostPosition pos;
@@ -767,6 +764,8 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		setupGhostPlayers();
 
+		m_fields->m_processGhost = false;
+
 		// this->schedule(schedule_selector(XPlayLayer::playGhost), 1.f / DRSettings::ghostFPS);
 
 		return true;
@@ -971,8 +970,9 @@ class $modify(XPlayLayer, PlayLayer) {
 
 class $modify(PlayerObject) {
 	void playerDestroyed(bool p0) {
-
 		PlayerObject::playerDestroyed(p0);
+
+		if (PlayLayer::get() == nullptr) return;
 
 		if (DRSettings::currentlyInPractice && !DRSettings::recordPractice) return PlayerObject::playDeathEffect();
 		
@@ -1024,6 +1024,7 @@ class $modify(PlayerObject) {
 
 	void pushEvent(struct PlayerEvent ev) {
 		if (DRSettings::actionInstance == nullptr) return;
+		if (PlayLayer::get() == nullptr) return;
 
 		std::map<PlayerObject *, int> m;
 		std::vector<PlayerObject *> pl = DRSettings::actionInstance->getAttachablePlayers();
@@ -1060,11 +1061,6 @@ class $modify(PlayerObject) {
 		PlayerObject::toggleFlyMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleFlyMode, p0, p1});
-	}
-	void togglePlatformerMode(bool p0) {
-		PlayerObject::togglePlatformerMode(p0);
-
-		pushEvent({PlayerEvent::TogglePlatformerMode, p0});
 	}
 	void togglePlayerScale(bool p0, bool p1) {
 		PlayerObject::togglePlayerScale(p0, p1);
