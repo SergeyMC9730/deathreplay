@@ -15,9 +15,6 @@ jobs:
         - name: Windows
           os: windows-latest
 
-        # - name: macOS
-        #   os: macos-latest
-
         - name: Android32
           os: ubuntu-latest
           target: Android32
@@ -31,16 +28,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
-          bindings: SergeyMC9730/bindings
+          build-config: 'RelWithDebInfo'
+          bindings: geode-sdk/bindings
           bindings-ref: main
-          sdk: '3.2.0'
           combine: true
+          export-pdb: true
           target: ${{ matrix.config.target }}
 
   package:

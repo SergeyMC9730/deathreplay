@@ -5,6 +5,7 @@
  * SDK has been updated to `v3.8.1`
 ### Mod Description Changes
  * Fixed typo in v1.2.0 Beta 1 changelog
+ * Added mod tags
 
 # v1.2.4
 ### Gameplay Changes

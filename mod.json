@@ -93,11 +93,19 @@
 		}
 	},
 	"dependencies": [
-		{"id": "geode.node-ids", "importance": "required", "version": ">=1.12.0"}
+		{
+			"id": "geode.node-ids",
+			"importance": "required",
+			"version": ">=1.12.0"
+		}
 	],
 	"resources": {
 		"sprites": [
-            "resources/DR_globedIcon_001.png"
-        ]
+			"resources/DR_globedIcon_001.png"
+		]
+	},
+	"tags": [ "gameplay", "offline", "enhancement" ],
+	"links": {
+		"repository": "https://github.com/SergeyMC9730/deathreplay"
 	}
 }
