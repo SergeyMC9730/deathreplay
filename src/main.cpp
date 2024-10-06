@@ -91,6 +91,7 @@ namespace DRSettings {
 	XPlayLayer *actionInstance;
 
 	double ghostOffset;
+	double xOpacity;
 }
 
 namespace DRGlobal {
@@ -705,6 +706,7 @@ class $modify(XPlayLayer, PlayLayer) {
 		DRSettings::actionInstance = this;
 		DRSettings::debugMode = Mod::get()->getSettingValue<bool>("debug-mode");
 		DRSettings::ghostOffset = Mod::get()->getSettingValue<double>("ghost-offset");
+		DRSettings::xOpacity = Mod::get()->getSettingValue<double>("death-marker-opacity");
 
 		m_fields->m_shouldDelayGhost = DRSettings::ghostOffset < 0.f;
 
@@ -861,7 +863,7 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->setPositionY(y);
 
 				spr->setOpacity(0);
-				spr->runAction(CCFadeTo::create(0.2f, 128));
+				spr->runAction(CCFadeTo::create(0.2, (unsigned char)(255.f * DRSettings::xOpacity)));
 				
 				// for (auto ghost : m_fields->m_ghosts) {
 					
