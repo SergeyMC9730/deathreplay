@@ -189,7 +189,10 @@ class $modify(XLevelSelectLayer, LevelSelectLayer) {
 		int level_id = -1;
 		
 		auto batch = getChildByIDRecursive("page-buttons");
+		if (batch == nullptr) return level_id;
+		
 		CCArray *ch = batch->getChildren();
+		if (ch == nullptr) return level_id;
 
 		for (int i = 0; i < ch->count(); i++) {
 			CCObject *as_object = ch->objectAtIndex(i);

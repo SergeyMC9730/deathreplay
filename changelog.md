@@ -1,3 +1,9 @@
+# v1.2.6
+### Gameplay Changes
+ * Fixed possible crash
+### Technical Changes
+ * SDK has been updated to `v3.9.0`
+
 # v1.2.5
 ### Gameplay Changes
  * Added X sprite opacity modifier
