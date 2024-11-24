@@ -1,3 +1,11 @@
+# v1.3.0 Beta 1
+### Gameplay Changes
+ * DR button is now placed behind the level name instead of top left corner
+### Technical Changes
+ * SDK has been updated to `v4.0.1`
+ * New parameter has been added to a player death data: **Percentage**
+	* Currently unused.  
+
 # v1.2.6
 ### Gameplay Changes
  * Fixed possible crash

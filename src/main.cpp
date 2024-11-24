@@ -1,4 +1,4 @@
-// clang-format off
+﻿// clang-format off
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayerObject.hpp>
@@ -154,15 +154,234 @@ namespace DRGlobal {
 	bool deadPlayerIsOffline = true;
 };
 
+class DrPercentageBar : public CCNode {
+private:
+	CCSprite* _spr;
+public:
+	void update(float delta) override {
+
+	}
+
+	bool init(int p, float maxHeight) {
+		CCSprite* square = CCSprite::create("square.png");
+		square->setAnchorPoint({ 0, 0 });
+
+		float r = (float)p / 100.f;
+		float scaleY = (maxHeight * r) / (float)square->getContentHeight();
+		float scaleX = 0.3f;
+
+		square->setScaleX(scaleX);
+
+		setContentHeight(maxHeight);
+		setContentWidth(square->getContentWidth() * scaleX);
+
+		square->runAction(CCEaseInOut::create(CCScaleTo::create(0.5f, scaleX, scaleY), 2.f));
+
+		addChild(square);
+
+		_spr = square;
+
+		return true;
+	}
+
+	void setBarColor(const ccColor3B &col){
+		_spr->setColor(col);
+	}
+	void setBarOpacity(GLubyte opacity) {
+		_spr->setOpacity(opacity);
+	}
+
+	static DrPercentageBar* create(int p, float maxHeight) {
+		DrPercentageBar* pRet = new DrPercentageBar();
+		if (pRet && pRet->init(p, maxHeight)) {
+			pRet->autorelease();
+			return pRet;
+		}
+		else {
+			delete pRet;
+			pRet = 0;
+			return 0;
+		}
+	}
+};
+
+class DrInfoPopup : public FLAlertLayer {
+public:
+	void onExitButton(CCObject* sender) {
+		removeMeAndCleanup();
+	}
+
+	void update(float delta) override {
+
+	}
+
+	bool init() override {
+		if (!FLAlertLayer::init(0)) return false;
+
+		CCLayer* objectSelector = CCLayer::create();
+
+		CCScale9Sprite* spr1 = CCScale9Sprite::create("GJ_square05.png");
+		auto winsize = CCDirector::sharedDirector()->getWinSize();
+
+		spr1->setContentSize({ 300, 160 });
+		spr1->setAnchorPoint({ 0, 0 });
+
+		objectSelector->setPosition({ winsize.width / 2 - spr1->getContentWidth() / 2, winsize.height / 2 - spr1->getContentHeight() / 2});
+		objectSelector->setContentSize(spr1->getContentSize());
+
+		objectSelector->addChild(spr1);
+
+		std::string title = DRSettings::levelInstance->m_levelName;
+
+		CCLabelBMFont* bmf = CCLabelBMFont::create(title.c_str(), "bigFont.fnt");
+		bmf->setScale(0.7f);
+		bmf->setPositionX(spr1->getContentWidth() / 2);
+		bmf->setPositionY(spr1->getContentSize().height - 15);
+
+		objectSelector->addChild(bmf, 1);
+
+		auto exitBtn = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
+		auto btn3 = CCMenuItemSpriteExtra::create(
+			exitBtn, this, menu_selector(DrInfoPopup::onExitButton)
+		);
+		btn3->setPosition(0, spr1->getContentHeight());
+
+		CCMenu* men2 = CCMenu::create();
+		men2->setPosition({
+			0, 0
+		});
+		men2->addChild(btn3);
+
+		objectSelector->addChild(men2, 2);
+
+		m_mainLayer->addChild(objectSelector);
+
+		auto base = CCSprite::create("square.png");
+		base->setPosition({ 0, 0 });
+		base->setScale(500.f);
+		base->setColor({ 0, 0, 0 });
+		base->setOpacity(0);
+		base->runAction(CCFadeTo::create(0.3f, 125));
+
+		this->addChild(base, -1);
+
+		auto bars = CCLayer::create();
+		RowLayout* layout = RowLayout::create();
+
+		layout->setGrowCrossAxis(false);
+		layout->setCrossAxisOverflow(false);
+		layout->setAutoScale(true);
+		layout->setAxisAlignment(AxisAlignment::Start);
+		layout->setCrossAxisAlignment(AxisAlignment::Start);
+		layout->setCrossAxisLineAlignment(AxisAlignment::Start);
+		layout->setGap(0.f);
+
+		int spaceX = 60;
+		int spaceY = 40;
+
+		bars->setLayout(layout);
+		bars->setContentWidth(objectSelector->getContentWidth() - spaceX);
+		bars->setContentHeight(objectSelector->getContentHeight() - spaceY);
+		bars->setPosition(spaceX / 2, 10);
+		bars->setAnchorPoint({ 0, 0 });
+
+		for (int i = 0; i < 100; i++) {
+			auto bar = DrPercentageBar::create(rand() % 100, bars->getContentHeight());
+
+			if ((i % 2) == 0) {
+				bar->setBarOpacity(200);
+			}
+			else {
+				bar->setBarOpacity(128);
+			}
+
+			bars->addChild(bar);
+		}
+
+		bars->updateLayout();
+
+		objectSelector->addChild(bars);
+
+		CCDrawNode* drawing = CCDrawNode::create();
+		drawing->setContentSize(objectSelector->getContentSize());
+		drawing->setAnchorPoint({ 0, 0 });
+		CCRect r = { {0, 0}, drawing->getContentSize() };
+		drawing->enableDrawArea(r);
+
+		CCPoint p1 = { 0, 0 };
+		CCPoint p2 = { 50, 50 };
+
+		drawing->drawRect(p1, p2, {255, 255, 255, 255}, 3.f, {255, 0, 0, 255});
+
+		objectSelector->addChild(drawing);
+
+		show();
+
+		scheduleUpdate();
+
+		return true;
+	}
+	void registerWithTouchDispatcher() override {
+		CCTouchDispatcher* dispatcher = cocos2d::CCDirector::sharedDirector()->getTouchDispatcher();
+
+		dispatcher->addTargetedDelegate(this, -502, true);
+	}
+	static DrInfoPopup* create() {
+		DrInfoPopup* pRet = new DrInfoPopup();
+		if (pRet && pRet->init()) {
+			pRet->autorelease();
+			return pRet;
+		}
+		else {
+			delete pRet;
+			pRet = 0;
+			return 0;
+		}
+	}
+};
+
 class $modify(XLevelInfoLayer, LevelInfoLayer) {
 	static void onModify(auto & self) {
 		(void) self.setHookPriority("LevelInfoLayer::init", INT32_MIN + 1);
 	}
 	void onDeathReplay(CCObject *target) {
-		DRSettings::delegate.lvl = DRSettings::levelInstance;
+		if (!DRSettings::debugMode) {
+			DRSettings::delegate.lvl = DRSettings::levelInstance;
 
-		FLAlertLayer *l = FLAlertLayer::create(&DRSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> the Death Replay file for this <cy>level</c>?", "No", "Yes");
-		l->show(); 
+			FLAlertLayer *l = FLAlertLayer::create(&DRSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> the Death Replay file for this <cy>level</c>?", "No", "Yes");
+			l->show();
+
+			return;
+		}
+
+		int id = DRSettings::levelInstance->m_levelID;
+		auto level = DRSettings::levelInstance;
+
+		std::string path = Mod::get()->getSaveDir().generic_string();
+		std::string filename = path + "/level_" + std::to_string(id) + ".json";
+
+		if (id == 0) {
+			std::string name = level->m_levelName;
+			int chk = level->m_chk;
+			int rev = level->m_levelRev;
+			int sid = level->m_songID;
+
+			filename = path + "/level_C_" + name + std::to_string(chk) + std::to_string(rev) + std::to_string(sid) + ".json";
+		}
+
+		if (!std::filesystem::exists(filename)) {
+			FLAlertLayer::create("Death Replay", "<cr>No information available</c> about this level.", "OK")->show();
+
+			return;
+		}
+
+		std::ifstream f(filename);
+
+		_progresses = nlohmann::json::parse(f);
+
+		f.close();
+
+		DrInfoPopup* popup = DrInfoPopup::create();
 	}
 
 	bool init(GJGameLevel *lvl, bool idk) {
@@ -170,15 +389,35 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 
 		DRSettings::levelInstance = lvl;
 
-		CCSprite *btn_spr = CCSprite::createWithSpriteFrameName("backArrowPlain_01_001.png");
-		btn_spr->setColor(ccRED);
-		btn_spr->setFlipX(true);
+		
+		CCSprite* btn_spr;
+		if (DRSettings::debugMode) {
+			btn_spr = CCSprite::create("DR_infoIcon_001.png"_spr);
+			btn_spr->setScale(1.4f);
+		}
+		else {
+			btn_spr = CCSprite::createWithSpriteFrameName("backArrowPlain_01_001.png");
+			btn_spr->setColor(ccRED);
+			btn_spr->setFlipX(true);
+		}
 
 		CCMenuItemSpriteExtra *spr_men = CCMenuItemSpriteExtra::create(btn_spr, this, menu_selector(XLevelInfoLayer::onDeathReplay));
 		spr_men->setID("dr-remove-file");
 
-		getChildByID("back-menu")->addChild(spr_men);
-		getChildByID("back-menu")->updateLayout();
+		CCNode* label = getChildByID("title-label");
+		CCMenu* drMenu = CCMenu::create();
+		drMenu->setPosition({ 0, 0 });
+
+		spr_men->setPosition({
+			label->getPosition().x - ((label->getContentWidth() / 2) * label->getScale()) - ((btn_spr->getContentWidth() / 2) * btn_spr->getScale()) - 5.f,
+			label->getPosition().y
+		});
+		spr_men->setAnchorPoint({ 0.35f, 0.6f });
+
+		drMenu->setID("dr-button-menu");
+
+		drMenu->addChild(spr_men);
+		addChild(drMenu);
 
 		return true;
 	}
@@ -1011,6 +1250,7 @@ class $modify(PlayerObject) {
 		}
 
 		attempt.push_back((int)DRGlobal::deadPlayerIsOffline);
+		attempt.push_back((int)pl->getCurrentPercentInt());
 
 		//printf("added death notif with: %f %f %d %f\n", getPositionX(), getPositionY(), 1, (float)DRSettings::playTime);
 
