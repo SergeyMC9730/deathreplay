@@ -1,3 +1,8 @@
+# v1.3.0 Beta 2
+### Gameplay Changes
+ * First Ghost frame now contains current gamemode
+ * Ghost now supports dashing
+
 # v1.3.0 Beta 1
 ### Gameplay Changes
  * DR button is now placed behind the level name instead of top left corner

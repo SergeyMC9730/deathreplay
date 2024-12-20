@@ -575,61 +575,87 @@ struct PlayerEvent {
 		ToggleSwingMode,
 		ToggleVisibility,
 		PlayDeathEffect,
-		PlaySpawnEffect
+		PlaySpawnEffect,
+		StopDashing,
+		StartDashing,
+		SpiderDashEffect,
+		SpiderRun
 	};
 
 	enum PlayerEventEnum event;
 
-	unsigned char p0;
-	unsigned char p1;
+	using Argument = std::variant<unsigned char, DashRingObject*, CCPoint>;
 
-	operator PlayerEventEnum() {
+	Argument _p0 = (unsigned char)0;
+	Argument _p1 = (unsigned char)0;
+
+	operator PlayerEventEnum() const {
 		return event;
 	};
+
+	inline unsigned char p0c() const {
+		return std::get<unsigned char>(_p0);
+	}
+	inline DashRingObject* p0d() const {
+		return std::get<DashRingObject*>(_p0);
+	}
+	inline CCPoint p0p() const {
+		return std::get<CCPoint>(_p0);
+	}
+
+	inline unsigned char p1c() const {
+		return std::get<unsigned char>(_p1);
+	}
+	inline DashRingObject* p1d() const {
+		return std::get<DashRingObject*>(_p1);
+	}
+	inline CCPoint p1p() const {
+		return std::get<CCPoint>(_p1);
+	}
 };
 
 class GhostPlayerFrame {
 protected:
-	void processEventOnPlayer(struct PlayerEvent event, PlayerObject *obj) {
+	void processEventOnPlayer(const struct PlayerEvent &event, PlayerObject *obj) {
 		if (DRSettings::debugMode) log::info("+ Running event with ID {}: ", (int)((PlayerEvent::PlayerEventEnum)event));
 
 		// bool success = true;
 
 		switch ((PlayerEvent::PlayerEventEnum)event) {
 			case PlayerEvent::ToggleBirdMode: {
-				obj->toggleBirdMode((bool)event.p0, (bool)event.p1);
+				obj->toggleBirdMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleDartMode: {
-				obj->toggleDartMode((bool)event.p0, (bool)event.p1);
+				obj->toggleDartMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleFlyMode: {
-				obj->toggleFlyMode((bool)event.p0, (bool)event.p1);
+				obj->toggleFlyMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::TogglePlayerScale: {
-				obj->togglePlayerScale((bool)event.p0, (bool)event.p1);
+				obj->togglePlayerScale((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleRobotMode: {
-				obj->toggleRobotMode((bool)event.p0, (bool)event.p1);
+				obj->toggleRobotMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleRollMode: {
-				obj->toggleRollMode((bool)event.p0, (bool)event.p1);
+				obj->toggleRollMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleSpiderMode: {
-				obj->toggleSpiderMode((bool)event.p0, (bool)event.p1);
+				obj->toggleSpiderMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleSwingMode: {
-				obj->toggleSwingMode((bool)event.p0, (bool)event.p1);
+				obj->toggleSwingMode((bool)event.p0c(), (bool)event.p1c());
 				break;
 			}
 			case PlayerEvent::ToggleVisibility: {
-				obj->toggleVisibility((bool)event.p0);
+				obj->toggleVisibility((bool)event.p0c());
 				break;
 			}
 			case PlayerEvent::PlayDeathEffect: {
@@ -640,6 +666,22 @@ protected:
 			}
 			case PlayerEvent::PlaySpawnEffect: {
 				obj->playSpawnEffect();
+				break;
+			}
+			case PlayerEvent::StartDashing: {
+				obj->startDashing(event.p0d());
+				break;
+			}
+			case PlayerEvent::StopDashing: {
+				obj->stopDashing();
+				break;
+			}
+			case PlayerEvent::SpiderDashEffect: {
+				obj->playSpiderDashEffect(event.p0p(), event.p1p());
+				break;
+			}
+			case PlayerEvent::SpiderRun: {
+				obj->playDynamicSpiderRun();
 				break;
 			}
 			default: {
@@ -659,7 +701,7 @@ public:
 	std::vector<struct PlayerEvent> _events;
 
 	void processEventsOnPlayer(PlayerObject *obj) {
-		for (auto event : _events) {
+		for (const auto &event : _events) {
 			processEventOnPlayer(event, obj);
 		}
 	}
@@ -697,6 +739,8 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		bool m_gameBegan = false;
 		bool m_shouldDelayGhost = false;
+
+		bool m_shouldSendGamemodeInfo = false;
 
 		// std::vector<struct PlayerEvent> m_requestedEvents;
 		std::map<int, std::vector<struct PlayerEvent>> m_requestedEvents;
@@ -768,8 +812,55 @@ class $modify(XPlayLayer, PlayLayer) {
 		DRSettings::currentAttempt = m_fields->m_XcurrentAttempt;
 	}
 
+	void pushEvent(PlayerObject *obj, struct PlayerEvent ev) {
+		if (!DRSettings::actionInstance || !PlayLayer::get() || !obj) return;
+
+		std::map<PlayerObject*, int> m;
+		std::vector<PlayerObject*> pl = DRSettings::actionInstance->getAttachablePlayers();
+
+		for (int i = 0; i < pl.size(); i++) {
+			m[pl[i]] = i;
+		}
+
+		if (!m.count(obj)) return;
+		if (!DRSettings::actionInstance->m_fields->m_requestedEvents.count(m[obj])) {
+			DRSettings::actionInstance->m_fields->m_requestedEvents[m[obj]] = {};
+		}
+
+		DRSettings::actionInstance->m_fields->m_requestedEvents[m[obj]].push_back(ev);
+	}
+
+	void setupPlayerInfoInFrame() {
+		if (DRSettings::debugMode) {
+			log::info("setting up player info");
+		}
+
+		std::vector<PlayerObject*> players = getAttachablePlayers();
+
+		for (auto pl : players) {
+			if (!pl) continue;
+
+			unsigned char p0 = 1, p1 = 1;
+
+			if (pl->m_isShip) pushEvent(pl, { PlayerEvent::ToggleFlyMode, p0, p1 });
+			else if (pl->m_isBird) pushEvent(pl, { PlayerEvent::ToggleBirdMode, p0, p1 });
+			else if (pl->m_isBall) pushEvent(pl, { PlayerEvent::ToggleRollMode, p0, p1 });
+			else if (pl->m_isDart) pushEvent(pl, { PlayerEvent::ToggleDartMode, p0, p1 });
+			else if (pl->m_isRobot) pushEvent(pl, { PlayerEvent::ToggleRobotMode, p0, p1 });
+			else if (pl->m_isSpider) pushEvent(pl, { PlayerEvent::ToggleSpiderMode, p0, p1 });
+			else if (pl->m_isSwing) pushEvent(pl, { PlayerEvent::ToggleSwingMode, p0, p1 });
+			if (pl->m_isDashing) pushEvent(pl, { PlayerEvent::StartDashing, pl->m_dashRing, p1 });
+		}
+	}
+
 	void addPlayerPosition(float delta) {
 		// log::info("recording!");
+
+		if (m_fields->m_shouldSendGamemodeInfo) {
+			m_fields->m_shouldSendGamemodeInfo = false;
+
+			setupPlayerInfoInFrame();
+		}
 
 		std::vector<PlayerObject *> players = getAttachablePlayers();
 
@@ -811,6 +902,8 @@ class $modify(XPlayLayer, PlayLayer) {
 		if (DRSettings::showGhost) {
 			m_fields->m_processGhost = true;
 		}
+
+		setupPlayerInfoInFrame();
 	}
 
 	void playGhost(float delta) {
@@ -930,6 +1023,8 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_gameBegan = true;
 
 		PlayLayer::startGame();
+
+		setupPlayerInfoInFrame();
 	}
 
 	bool init(GJGameLevel *level, bool a, bool b) {
@@ -1180,6 +1275,7 @@ class $modify(XPlayLayer, PlayLayer) {
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
 		m_fields->m_processGhost = false;
+		m_fields->m_shouldSendGamemodeInfo = true;
 
 		if (m_fields->m_shouldDelayGhost) {
 			float time = -DRSettings::ghostOffset;
@@ -1268,8 +1364,7 @@ class $modify(PlayerObject) {
 	}
 
 	void pushEvent(struct PlayerEvent ev) {
-		if (DRSettings::actionInstance == nullptr) return;
-		if (PlayLayer::get() == nullptr) return;
+		if (DRSettings::actionInstance == nullptr || PlayLayer::get() == nullptr) return;
 
 		std::map<PlayerObject *, int> m;
 		std::vector<PlayerObject *> pl = DRSettings::actionInstance->getAttachablePlayers();
@@ -1286,60 +1381,100 @@ class $modify(PlayerObject) {
 		DRSettings::actionInstance->m_fields->m_requestedEvents[m[this]].push_back(ev);
 	}
 
+	void eventDebugger(std::string str = "unknown", unsigned char p0 = 0, unsigned char p1 = 1) {
+		if (!DRSettings::debugMode) return;
+
+		log::info("{}->{},{}", str, p0, p1);
+	}
+
 	void playDeathEffect() {
+		eventDebugger("death");
 		pushEvent({PlayerEvent::PlayDeathEffect});
 
 		PlayerObject::playDeathEffect();
 	}
-
 	void toggleBirdMode(bool p0, bool p1) {
+		eventDebugger("bird");
 		PlayerObject::toggleBirdMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleBirdMode, p0, p1});
 	}
 	void toggleDartMode(bool p0, bool p1) {
+		eventDebugger("dart", p0, p1);
 		PlayerObject::toggleDartMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleDartMode, p0, p1});
 	}
 	void toggleFlyMode(bool p0, bool p1) {
+		eventDebugger("fly", p0, p1);
 		PlayerObject::toggleFlyMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleFlyMode, p0, p1});
 	}
 	void togglePlayerScale(bool p0, bool p1) {
+		eventDebugger("scale", p0, p1);
 		PlayerObject::togglePlayerScale(p0, p1);
 
 		pushEvent({PlayerEvent::TogglePlayerScale, p0, p1});
 	}
 	void toggleRobotMode(bool p0, bool p1) {
+		eventDebugger("robot", p0, p1);
 		PlayerObject::toggleRobotMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleRobotMode, p0, p1});
 	}
 	void toggleRollMode(bool p0, bool p1) {
+		eventDebugger("roll", p0, p1);
 		PlayerObject::toggleRollMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleRollMode, p0, p1});
 	}
 	void toggleSpiderMode(bool p0, bool p1) {
+		eventDebugger("spider", p0, p1);
 		PlayerObject::toggleSpiderMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleSpiderMode, p0, p1});
 	}
 	void toggleSwingMode(bool p0, bool p1) {
+		eventDebugger("swing", p0, p1);
 		PlayerObject::toggleSwingMode(p0, p1);
 
 		pushEvent({PlayerEvent::ToggleSwingMode, p0, p1});
 	}
 	void toggleVisibility(bool p0) {
+		eventDebugger("visibility", p0);
 		PlayerObject::toggleVisibility(p0);
 
 		pushEvent({PlayerEvent::ToggleVisibility, p0});
 	}
 	void playSpawnEffect() {
+		eventDebugger("spawn");
 		pushEvent({PlayerEvent::PlaySpawnEffect});
 
 		PlayerObject::playSpawnEffect();
+	}
+	void startDashing(DashRingObject* p0) {
+		eventDebugger("start dashing");
+		pushEvent({ PlayerEvent::StartDashing, p0 });
+
+		PlayerObject::startDashing(p0);
+	}
+	void stopDashing() {
+		eventDebugger("stop dashing");
+		pushEvent({ PlayerEvent::StopDashing });
+
+		PlayerObject::stopDashing();
+	}
+	void playSpiderDashEffect(CCPoint p0, CCPoint p1) {
+		eventDebugger("spider effect");
+		pushEvent({ PlayerEvent::SpiderDashEffect, p0, p1 });
+
+		PlayerObject::playSpiderDashEffect(p0, p1);
+	}
+	void playDynamicSpiderRun() {
+		eventDebugger("spider run");
+		pushEvent({ PlayerEvent::SpiderRun });
+
+		PlayerObject::playDynamicSpiderRun();
 	}
 };
