@@ -1,112 +1,124 @@
 {
-	"geode": "4.0.1",
-	"version": "v1.3.0-beta.2",
-	"gd": {
-		"android": "2.2074",
-		"win": "2.2074"
-	},
-	"id": "dogotrigger.deathreplay",
-	"name": "Death Replay",
-	"developer": "dogotrigger",
-	"repository": "https://github.com/SergeyMC9730/deathreplay",
-	"issues": {
-		"url": "https://github.com/SergeyMC9730/deathreplay/issues",
-		"info": "Any bugs with Death Replay should be reported here."
-	},
-	"description": "Shows all of your level deaths while playing it",
-	"settings": {
-		"show-deaths": {
-			"name": "Show Deaths",
-			"description": "Show deaths while playing levels.",
-			"type": "bool",
-			"default": true
-		},
-		"show-ghost": {
-			"name": "Show Ghost",
-			"description": "Show ghost from a previous attempt while playing any level.",
-			"type": "bool",
-			"default": true
-		},
-		"play-death-sound": {
-			"name": "Play Death Sound",
-			"description": "Plays death sound.",
-			"type": "bool",
-			"default": true
-		},
-		"show-particles": {
-			"name": "Show Particles",
-			"description": "Shows death particles. Functionality of this feature is currently limited on Android and Windows.",
-			"type": "bool",
-			"default": true
-		},
-		"record-practice": {
-			"name": "Record in Practice Mode",
-			"description": "Record all death positions in Practice Mode.",
-			"type": "bool",
-			"default": false
-		},
-		"record-globed-players": {
-			"name": "Record Players in Globed",
-			"description": "Allows Death Replay to record deaths caused by online players.",
-			"type": "bool",
-			"default": false
-		},
-		"debug-mode": {
-			"name": "Debug Mode",
-			"description": "Spams terminal with debug output when this feature is enabled. Useful for debugging bugs and crashes.",
-			"type": "bool",
-			"default": false
-		},
-		"ghost-offset": {
-			"name": "Ghost Offset",
-			"description": "Offsets ghost's position by approximately X seconds.",
-			"type": "float",
-			"default": 0.3,
-			"min": 0,
-			"max": 3,
-			"controls": {
-				"arrows": true,
-				"arrow-step": 0.1,
-				"big-arrows": false,
-				"big-arrow-step": 0.5,
-				"slider": true,
-				"slider-step": 0.02,
-				"input": false
-			}
-		},
-		"death-marker-opacity": {
-			"name": "Marker Opacity",
-			"description": "Sets death marker opacity by X. 1 is fully visible. 0 is fully invisible.",
-			"type": "float",
-			"default": 0.5,
-			"min": 0,
-			"max": 1,
-			"controls": {
-				"arrows": true,
-				"arrow-step": 0.1,
-				"big-arrows": false,
-				"big-arrow-step": 0.5,
-				"slider": true,
-				"slider-step": 0.02,
-				"input": false
-			}
-		}
-	},
-	"dependencies": [
-		{
-			"id": "geode.node-ids",
-			"importance": "required",
-			"version": ">=1.17.0"
-		}
-	],
-	"resources": {
-		"sprites": [
-			"resources/DR_globedIcon_001.png",
-			"resources/DR_infoIcon_001.png"
-		]
-	},
-	"tags": [ "gameplay", "offline", "enhancement" ],
-	"links": {
-		"repository": "https://github.com/SergeyMC9730/deathreplay"
-	}
+  "geode": "4.4.0",
+  "version": "v1.3.0-beta.3",
+  "gd": {
+    "android": "2.2074",
+    "win": "2.2074"
+  },
+  "id": "dogotrigger.deathreplay",
+  "name": "Death Replay",
+  "developer": "dogotrigger",
+  "repository": "https://github.com/SergeyMC9730/deathreplay",
+  "issues": {
+    "url": "https://github.com/SergeyMC9730/deathreplay/issues",
+    "info": "Any bugs with Death Replay should be reported here."
+  },
+  "description": "Shows all of your level deaths while playing it",
+  "settings": {
+    "show-deaths": {
+      "name": "Show Deaths",
+      "description": "Show deaths while playing levels.",
+      "type": "bool",
+      "default": true
+    },
+    "show-ghost": {
+      "name": "Show Ghost",
+      "description": "Show ghost from a previous attempt while playing any level.",
+      "type": "bool",
+      "default": true
+    },
+    "play-death-sound": {
+      "name": "Play Death Sound",
+      "description": "Plays death sound.",
+      "type": "bool",
+      "default": true
+    },
+    "show-particles": {
+      "name": "Show Particles",
+      "description": "Shows death particles. Functionality of this feature is currently limited on Android and Windows.",
+      "type": "bool",
+      "default": true
+    },
+    "record-practice": {
+      "name": "Record in Practice Mode",
+      "description": "Record all death positions in Practice Mode.",
+      "type": "bool",
+      "default": false
+    },
+    "record-globed-players": {
+      "name": "Record Players in Globed",
+      "description": "Allows Death Replay to record deaths caused by online players.",
+      "type": "bool",
+      "default": false
+    },
+    "debug-mode": {
+      "name": "Debug Mode",
+      "description": "Spams terminal with debug output when this feature is enabled. Useful for debugging bugs and crashes.",
+      "type": "bool",
+      "default": false
+    },
+    "ghost-offset": {
+      "name": "Ghost Offset",
+      "description": "Offsets ghost's position by approximately X seconds.",
+      "type": "float",
+      "default": 0.3,
+      "min": 0,
+      "max": 3,
+      "controls": {
+        "arrows": true,
+        "arrow-step": 0.1,
+        "big-arrows": false,
+        "big-arrow-step": 0.5,
+        "slider": true,
+        "slider-step": 0.02,
+        "input": false
+      }
+    },
+    "death-marker-opacity": {
+      "name": "Marker Opacity",
+      "description": "Sets death marker opacity by X. 1 is fully visible and 0 is fully invisible.",
+      "type": "float",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "controls": {
+        "arrows": true,
+        "arrow-step": 0.1,
+        "big-arrows": false,
+        "big-arrow-step": 0.5,
+        "slider": true,
+        "slider-step": 0.02,
+        "input": false
+      }
+    },
+    "show-markers-after-death": {
+      "name": "Show Markers After Death",
+      "description": "Makes markers invisible until offline player dies.",
+      "type": "bool",
+      "default": false
+    },
+    "show-farthest-ghost": {
+      "name": "Show Farthest Ghost",
+      "description": "Shows ghost which went furthest from the start in platformer levels or had highest percentage in classic levels.",
+      "type": "bool",
+      "default": false
+    }
+  },
+  "dependencies": [
+    {
+      "id": "geode.node-ids",
+      "importance": "required",
+      "version": ">=1.17.0"
+    }
+  ],
+  "resources": {
+    "sprites": [
+      "resources/DR_globedIcon_001.png",
+      "resources/DR_infoIcon_001.png"
+    ]
+  },
+  "tags": ["gameplay", "offline", "enhancement"],
+  "links": {
+    "repository": "https://github.com/SergeyMC9730/deathreplay"
+  }
 }

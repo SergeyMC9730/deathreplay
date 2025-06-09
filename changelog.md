@@ -1,3 +1,10 @@
+# v1.3.0 Beta 3
+### Gameplay Changes
+ * Added new mod setting: **Show Markers After Death**. Requested by Stoupy51 on GitHub
+	* It makes markers invisible until offline player dies.
+ * Added new mod setting: **Show Farthest Ghost**. Requested by Zebre2007-2 on GitHub
+   * It shows ghost which had highest playtime in platformer levels or had biggest percentage in classic levels.
+
 # v1.3.0 Beta 2
 ### Gameplay Changes
  * First Ghost frame now contains current gamemode
@@ -9,7 +16,7 @@
 ### Technical Changes
  * SDK has been updated to `v4.0.1`
  * New parameter has been added to a player death data: **Percentage**
-	* Currently unused.  
+	* Currently unused.
 
 # v1.2.6
 ### Gameplay Changes

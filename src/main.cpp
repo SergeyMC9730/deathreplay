@@ -1,5 +1,6 @@
 ﻿// clang-format off
 
+#include "Geode/binding/PlayLayer.hpp"
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/PlayLayer.hpp>
@@ -58,7 +59,7 @@ public:
 		std::filesystem::remove(filepath);
 
 		FLAlertLayer *al = FLAlertLayer::create("Success!", "Death Replay file has been <cr>removed</c> for this <cy>level</c>.", "OK");
-		al->show(); 
+		al->show();
 	}
 };
 
@@ -69,7 +70,9 @@ namespace DRSettings {
 	bool showParticles = true;
 	bool playDeathEffect = true;
 	bool withGlobed = false;
-	
+	bool showAfterDeath = false;
+	bool showGreatestGhost = false;
+
 	bool recordPractice = false;
 	bool currentlyInPractice = false;
 
@@ -121,6 +124,9 @@ namespace DRGlobal {
 			{"Dash", 22}
 		};
 	}
+
+	CCLayer *curDeathLayer = nullptr;
+	float deathPercentage = 1.f;
 
 	bool hasLevel(int id) {
 		auto map = getOfficialLevels();
@@ -389,7 +395,6 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 
 		DRSettings::levelInstance = lvl;
 
-		
 		CCSprite* btn_spr;
 		if (DRSettings::debugMode) {
 			btn_spr = CCSprite::create("DR_infoIcon_001.png"_spr);
@@ -426,10 +431,10 @@ class $modify(XLevelInfoLayer, LevelInfoLayer) {
 class $modify(XLevelSelectLayer, LevelSelectLayer) {
 	int detectLevelID() {
 		int level_id = -1;
-		
+
 		auto batch = getChildByIDRecursive("page-buttons");
 		if (batch == nullptr) return level_id;
-		
+
 		CCArray *ch = batch->getChildren();
 		if (ch == nullptr) return level_id;
 
@@ -462,7 +467,7 @@ class $modify(XLevelSelectLayer, LevelSelectLayer) {
 		std::string a = "Are you sure you want to <cr>remove</c> Death Replay file for <cy>" + levelName + "</c>?";
 
 		FLAlertLayer *l = FLAlertLayer::create(&DRSettings::delegate, "Death Replay", a, "No", "Yes");
-		l->show(); 
+		l->show();
 	}
 
 	void hideButton() {
@@ -494,7 +499,7 @@ class $modify(XLevelSelectLayer, LevelSelectLayer) {
 
 	bool init(int p0) {
 		if (!LevelSelectLayer::init(p0)) return false;
-		
+
 		CCSprite *btn_spr = CCSprite::createWithSpriteFrameName("backArrowPlain_01_001.png");
 		btn_spr->setColor(ccRED);
 		btn_spr->setFlipX(true);
@@ -528,9 +533,9 @@ class $modify(XEditLevelLayer, EditLevelLayer) {
 		DRSettings::delegate.lvl = DRSettings::levelInstance;
 
 		FLAlertLayer *l = FLAlertLayer::create(&DRSettings::delegate, "Death Replay", "Are you sure you want to <cr>remove</c> Death Replay file for this <cy>level</c>?", "No", "Yes");
-		l->show(); 
+		l->show();
 	}
-	
+
 	bool init(GJGameLevel* p0) {
 		if (!EditLevelLayer::init(p0)) return false;
 
@@ -721,6 +726,7 @@ class $modify(XPlayLayer, PlayLayer) {
 		std::vector<cocos2d::CCParticleSystemQuad *> m_particles;
 		std::vector<GhostPosition> m_ghostPosition = {};
 		std::vector<GhostPosition> m_currentGhost = {};
+		float m_currentGhostPercentage = 0.f;
 		bool m_processGhost = false;
 
 		CCLayer *m_deathLayer = nullptr;
@@ -1044,6 +1050,9 @@ class $modify(XPlayLayer, PlayLayer) {
 		DRSettings::debugMode = Mod::get()->getSettingValue<bool>("debug-mode");
 		DRSettings::ghostOffset = Mod::get()->getSettingValue<double>("ghost-offset");
 		DRSettings::xOpacity = Mod::get()->getSettingValue<double>("death-marker-opacity");
+		DRSettings::showAfterDeath = Mod::get()->getSettingValue<bool>("show-markers-after-death");
+		DRSettings::showGreatestGhost = Mod::get()->getSettingValue<bool>("show-farthest-ghost");
+		DRGlobal::deathPercentage = 0;
 
 		m_fields->m_shouldDelayGhost = DRSettings::ghostOffset < 0.f;
 
@@ -1054,6 +1063,10 @@ class $modify(XPlayLayer, PlayLayer) {
 		}
 
 		m_fields->m_deathLayer = CCLayer::create();
+		if (DRSettings::showAfterDeath) {
+            m_fields->m_deathLayer->setVisible(false);
+		}
+		DRGlobal::curDeathLayer = m_fields->m_deathLayer;
 
 		m_fields->m_deaths.clear();
 		m_fields->m_nodes.clear();
@@ -1066,7 +1079,7 @@ class $modify(XPlayLayer, PlayLayer) {
 		if (!res) return false;
 
 		m_fields->m_camera1 = m_player1;
-		
+
 		int id = level->m_levelID.value();
 
 		std::string path = Mod::get()->getSaveDir().generic_string();
@@ -1154,7 +1167,7 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		while (i < _progresses["attempts"].size()) {
 			auto obj = _progresses["attempts"][i];
-	
+
 			float x = obj[0].get<float>();
 			float y = obj[1].get<float>();
 			bool created = obj[2].get<int>();
@@ -1175,7 +1188,7 @@ class $modify(XPlayLayer, PlayLayer) {
 				isOffline = obj[4].get<int>();
 			}
 
-			if (!created && 
+			if (!created &&
 				(
 					(x <= m_player1->getPositionX())
 					||
@@ -1199,11 +1212,16 @@ class $modify(XPlayLayer, PlayLayer) {
 				nd->setPositionX(x);
 				nd->setPositionY(y);
 
-				spr->setOpacity(0);
-				spr->runAction(CCFadeTo::create(0.2, (unsigned char)(255.f * DRSettings::xOpacity)));
-				
+				if (!DRSettings::showAfterDeath) {
+				    spr->setOpacity(0);
+				    spr->runAction(CCFadeTo::create(0.2, (unsigned char)(255.f * DRSettings::xOpacity)));
+				} else {
+				    spr->setOpacity(255);
+					// nd->setVisible(false);
+				}
+
 				// for (auto ghost : m_fields->m_ghosts) {
-					
+
 				// }
 
 				// // if (x == m_fields->m_ghost->getPositionX() && y == m_fields->m_ghost->getPositionY()) {
@@ -1214,21 +1232,21 @@ class $modify(XPlayLayer, PlayLayer) {
 
 				if(DRSettings::showParticles) {
 #ifdef _WIN32
-					CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);	
+					CCCircleWave *wave = CCCircleWave::create(10.f, 80.f, 0.4f, false, true);
 					// // wave->m_opacityMultiplier = 0.5f;
 					wave->m_color = m_player1->getColor();
 
 					nd->addChild(wave);
 #endif
 
-#ifndef _WIN32
-					spawnParticle("explodeEffect.plist", 0, kCCPositionTypeRelative, {x, y});
-#endif
+// #ifndef _WIN32
+					if (!DRSettings::showAfterDeath) spawnParticle("explodeEffect.plist", 0, kCCPositionTypeRelative, {x, y});
+// #endif
 				}
 
-				if(DRSettings::playDeathEffect && isOffline) {
+				if(DRSettings::playDeathEffect && isOffline && !DRSettings::showAfterDeath) {
 					FMODAudioEngine *engine = FMODAudioEngine::sharedEngine();
-					engine->stopAllEffects();
+					// engine->stopAllEffects();
 					engine->playEffect("explode_11.ogg", 1.f, 0.5f, 0.5f);
 				}
 
@@ -1248,6 +1266,7 @@ class $modify(XPlayLayer, PlayLayer) {
 		if (DRSettings::debugMode) log::info("RESET LEVEL\n");
 
 		DRSettings::playTime = 0;
+		DRGlobal::curDeathLayer->setVisible(false);
 
 		PlayLayer::resetLevel();
 
@@ -1271,7 +1290,17 @@ class $modify(XPlayLayer, PlayLayer) {
 
 		if (!DRSettings::showGhost) return;
 
-		m_fields->m_currentGhost = m_fields->m_ghostPosition;
+		if (DRSettings::showGreatestGhost) {
+		    if (DRSettings::debugMode) log::info("comparing {} to {}", DRGlobal::deathPercentage, m_fields->m_currentGhostPercentage);
+		    if (DRGlobal::deathPercentage >= m_fields->m_currentGhostPercentage) {
+				if (DRSettings::debugMode) log::info("updating replay (2)");
+				m_fields->m_currentGhost = m_fields->m_ghostPosition;
+				m_fields->m_currentGhostPercentage = DRGlobal::deathPercentage;
+			}
+		} else {
+		    if (DRSettings::debugMode) log::info("updating replay (1)");
+		    m_fields->m_currentGhost = m_fields->m_ghostPosition;
+		}
 		m_fields->m_ghostPosition.clear();
 		m_fields->m_ghIndex = 0;
 		m_fields->m_processGhost = false;
@@ -1310,15 +1339,21 @@ class $modify(XPlayLayer, PlayLayer) {
 
 class $modify(PlayerObject) {
 	void playerDestroyed(bool p0) {
+	    float percentage = 0.f;
+
+	    PlayLayer *pl = PlayLayer::get();
+		if (pl) {
+		    if (DRSettings::debugMode) log::info("playTime={}", DRSettings::playTime);
+            if (DRSettings::inPlatformer) percentage = DRSettings::playTime;
+            else percentage = pl->getCurrentPercent();
+		}
+
 		PlayerObject::playerDestroyed(p0);
 
-		if (PlayLayer::get() == nullptr) return;
+		if (pl == nullptr) return;
+		if (DRSettings::currentlyInPractice && !DRSettings::recordPractice) return;
 
-		if (DRSettings::currentlyInPractice && !DRSettings::recordPractice) return PlayerObject::playDeathEffect();
-		
 		nlohmann::json attempt = nlohmann::json::array();
-
-		auto pl = PlayLayer::get();
 
 		if (pl->m_player1 == this || pl->m_player2 == this) {
 			DRGlobal::deadPlayerIsOffline = true;
@@ -1361,6 +1396,11 @@ class $modify(PlayerObject) {
 		o << _progresses;
 
 		o.close();
+
+		if (DRGlobal::deadPlayerIsOffline && DRSettings::showAfterDeath && DRGlobal::curDeathLayer) {
+		    DRGlobal::curDeathLayer->setVisible(true);
+			DRGlobal::deathPercentage = percentage;
+		}
 	}
 
 	void pushEvent(struct PlayerEvent ev) {
@@ -1381,10 +1421,10 @@ class $modify(PlayerObject) {
 		DRSettings::actionInstance->m_fields->m_requestedEvents[m[this]].push_back(ev);
 	}
 
-	void eventDebugger(std::string str = "unknown", unsigned char p0 = 0, unsigned char p1 = 1) {
+	void eventDebugger(std::string str = "unknown", unsigned char p0 = 0, unsigned char p1 = 0) {
 		if (!DRSettings::debugMode) return;
 
-		log::info("{}->{},{}", str, p0, p1);
+		// log::info("{}->{},{}", str, p0, p1);
 	}
 
 	void playDeathEffect() {
